@@ -1,4 +1,4 @@
-import type { Difficulty, QuizQuestion } from "./quiz";
+import type { Difficulty, QuizQuestion } from "@/types/quiz";
 
 export type RoomStatus = "lobby" | "active" | "paused" | "ended";
 
