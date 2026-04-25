@@ -8,6 +8,10 @@ import Setup from "./pages/Setup.tsx";
 import Quiz from "./pages/Quiz.tsx";
 import Results from "./pages/Results.tsx";
 import Stats from "./pages/Stats.tsx";
+import HostCreate from "./pages/live/HostCreate.tsx";
+import HostRoom from "./pages/live/HostRoom.tsx";
+import JoinRoom from "./pages/live/JoinRoom.tsx";
+import PlayRoom from "./pages/live/PlayRoom.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +28,10 @@ const App = () => (
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/results" element={<Results />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/live/host" element={<HostCreate />} />
+          <Route path="/live/host/:roomId" element={<HostRoom />} />
+          <Route path="/live/join" element={<JoinRoom />} />
+          <Route path="/live/play/:roomId" element={<PlayRoom />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

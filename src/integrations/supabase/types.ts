@@ -14,7 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      live_answers: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          participant_id: string
+          points_earned: number
+          question_id: string
+          question_order_index: number
+          room_id: string
+          selected_answer: string | null
+          time_taken_ms: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          participant_id: string
+          points_earned?: number
+          question_id: string
+          question_order_index: number
+          room_id: string
+          selected_answer?: string | null
+          time_taken_ms?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          participant_id?: string
+          points_earned?: number
+          question_id?: string
+          question_order_index?: number
+          room_id?: string
+          selected_answer?: string | null
+          time_taken_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_answers_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "live_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "live_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_answers_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_participants: {
+        Row: {
+          display_name: string
+          id: string
+          is_kicked: boolean
+          joined_at: string
+          last_seen_at: string
+          participant_token: string
+          room_id: string
+          score: number
+        }
+        Insert: {
+          display_name: string
+          id?: string
+          is_kicked?: boolean
+          joined_at?: string
+          last_seen_at?: string
+          participant_token: string
+          room_id: string
+          score?: number
+        }
+        Update: {
+          display_name?: string
+          id?: string
+          is_kicked?: boolean
+          joined_at?: string
+          last_seen_at?: string
+          participant_token?: string
+          room_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_questions: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          explanation: string
+          id: string
+          options: Json
+          order_index: number
+          question: string
+          room_id: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          explanation?: string
+          id?: string
+          options: Json
+          order_index: number
+          question: string
+          room_id: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          explanation?: string
+          id?: string
+          options?: Json
+          order_index?: number
+          question?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_questions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_rooms: {
+        Row: {
+          code: string
+          created_at: string
+          current_question_index: number
+          difficulty: string
+          host_name: string
+          host_token: string
+          id: string
+          password: string
+          question_started_at: string | null
+          seconds_per_question: number
+          status: string
+          topic: string
+          total_questions: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_question_index?: number
+          difficulty?: string
+          host_name: string
+          host_token: string
+          id?: string
+          password: string
+          question_started_at?: string | null
+          seconds_per_question?: number
+          status?: string
+          topic: string
+          total_questions?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_question_index?: number
+          difficulty?: string
+          host_name?: string
+          host_token?: string
+          id?: string
+          password?: string
+          question_started_at?: string | null
+          seconds_per_question?: number
+          status?: string
+          topic?: string
+          total_questions?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
