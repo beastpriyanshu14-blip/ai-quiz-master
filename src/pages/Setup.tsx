@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Sparkles, BarChart3, Bot } from "lucide-react";
+import { ArrowLeft, Search, Sparkles, BarChart3, Bot, Radio, LogIn } from "lucide-react";
 import { storage } from "@/lib/storage";
 import { useQuizStore } from "@/store/quizStore";
 import { Button } from "@/components/ui/button";
@@ -135,7 +135,40 @@ export default function Setup() {
           </div>
         )}
 
+        {/* Live quiz entry points */}
+        <div className="grid sm:grid-cols-2 gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => navigate("/live/host")}
+            className="group rounded-2xl border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary hover:scale-[1.01] transition-all p-4 text-left flex items-center gap-3"
+          >
+            <div className="size-10 rounded-xl bg-gradient-brand flex items-center justify-center shrink-0">
+              <Radio className="size-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm">Host Live Quiz</div>
+              <div className="text-xs text-muted-foreground truncate">Create a room with friends</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/live/join")}
+            className="group rounded-2xl border-2 border-accent/30 bg-accent/5 hover:bg-accent/10 hover:border-accent hover:scale-[1.01] transition-all p-4 text-left flex items-center gap-3"
+          >
+            <div className="size-10 rounded-xl bg-accent/30 border border-accent/40 flex items-center justify-center shrink-0">
+              <LogIn className="size-5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm">Join Live Quiz</div>
+              <div className="text-xs text-muted-foreground truncate">Enter a 6-character room code</div>
+            </div>
+          </button>
+        </div>
+
         <div className="glass-strong rounded-3xl p-6 sm:p-8 space-y-8">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-bold text-center">
+            — or play solo —
+          </div>
           {/* Topic */}
           <div>
             <label className="block text-sm font-semibold mb-3">Topic</label>
