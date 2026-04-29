@@ -1,6 +1,4 @@
 // Generate quiz questions via Lovable AI Gateway (Gemini)
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -19,21 +17,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Require authenticated caller to prevent anonymous AI-credit abuse.
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!token) {
-      return json({ error: "Unauthorized" }, 401);
-    }
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-    );
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claims?.claims?.sub) {
-      return json({ error: "Unauthorized" }, 401);
-    }
-
     const { topic, difficulty, num_questions } = await req.json();
 
     if (!topic || typeof topic !== "string" || !topic.trim()) {
