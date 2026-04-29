@@ -50,8 +50,8 @@ export default function PlayRoom() {
     if (!roomId) return;
     const ch = supabase
       .channel(`play-room-${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, (p) => {
-        if (p.new) setRoom(p.new as LiveRoom);
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, () => {
+        void refetchRoom();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
