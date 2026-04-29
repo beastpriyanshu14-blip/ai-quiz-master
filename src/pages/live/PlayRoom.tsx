@@ -72,23 +72,29 @@ export default function PlayRoom() {
     }
   }, [room?.reveal_results, room?.status]);
 
+  const refetchRoom = async () => {
+    const { data } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row) setRoom(row as LiveRoom);
+  };
+
   const load = async () => {
-    const { data: r } = await supabase.from("live_rooms").select("*").eq("id", roomId!).maybeSingle();
-    if (!r) { navigate("/setup"); return; }
-    setRoom(r as LiveRoom);
-    // SAFE view — never includes correct_answer or explanation
-    const { data: qs } = await supabase
-      .from("live_questions_safe" as any)
-      .select("*")
-      .eq("room_id", roomId!)
-      .order("order_index");
+    await refetchRoom();
+    if (!me) return;
+    // Safe questions RPC — gated server-side to participants/host of this room.
+    const { data: qs } = await supabase.rpc("get_room_questions_safe" as any, {
+      p_room_id: roomId,
+    });
     setQuestions(((qs ?? []) as unknown) as LiveQuestionSafe[]);
     await refetchParticipants();
     await refetchMyAnswers();
   };
   const refetchParticipants = async () => {
-    const { data } = await supabase.from("live_participants").select("*").eq("room_id", roomId!);
-    setParticipants((data ?? []) as LiveParticipant[]);
+    const { data } = await supabase
+      .from("live_participants_public" as any)
+      .select("*")
+      .eq("room_id", roomId!);
+    setParticipants(((data ?? []) as unknown) as LiveParticipant[]);
   };
   const refetchMyAnswers = async () => {
     if (!me) return;
