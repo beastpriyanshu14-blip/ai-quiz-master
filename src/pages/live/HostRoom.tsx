@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Copy, Play, Pause, SkipForward, Square, Users, ArrowLeft, Lock, Hash } from "lucide-react";
+import { Copy, Play, Pause, SkipForward, Square, Users, ArrowLeft, Lock, Hash, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getHostToken } from "@/lib/live";
 import { Button } from "@/components/ui/button";
