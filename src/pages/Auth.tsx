@@ -5,6 +5,7 @@ import { Mail, User, Sparkles, Target, BarChart3, Zap, CheckCircle2 } from "luci
 import { storage } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle as ThemeToggleLazy } from "@/components/ThemeToggle";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -33,7 +34,10 @@ export default function Auth() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <main className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggleLazy />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
