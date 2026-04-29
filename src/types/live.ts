@@ -15,10 +15,13 @@ export interface LiveRoom {
   question_started_at: string | null;
   seconds_per_question: number;
   total_questions: number;
+  max_participants: number | null;
+  reveal_results: boolean;
   created_at: string;
   updated_at: string;
 }
 
+/** Full question — only available to the host. */
 export interface LiveQuestion {
   id: string;
   room_id: string;
@@ -27,6 +30,15 @@ export interface LiveQuestion {
   options: string[];
   correct_answer: string;
   explanation: string;
+}
+
+/** Safe shape sent to participants (no correct_answer / explanation). */
+export interface LiveQuestionSafe {
+  id: string;
+  room_id: string;
+  order_index: number;
+  question: string;
+  options: string[];
 }
 
 export interface LiveParticipant {
