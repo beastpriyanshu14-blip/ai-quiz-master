@@ -257,6 +257,20 @@ export type Database = {
       }
     }
     Functions: {
+      create_live_room: {
+        Args: {
+          p_code: string
+          p_difficulty: string
+          p_host_name: string
+          p_host_token: string
+          p_max_participants: number
+          p_password: string
+          p_questions: Json
+          p_seconds_per_question: number
+          p_topic: string
+        }
+        Returns: Json
+      }
       join_live_room: {
         Args: {
           p_code: string
