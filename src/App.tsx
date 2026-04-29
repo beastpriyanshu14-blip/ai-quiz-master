@@ -8,6 +8,8 @@ import Setup from "./pages/Setup.tsx";
 import Quiz from "./pages/Quiz.tsx";
 import Results from "./pages/Results.tsx";
 import Stats from "./pages/Stats.tsx";
+import Profile from "./pages/Profile.tsx";
+import "./components/ThemeToggle";
 import HostCreate from "./pages/live/HostCreate.tsx";
 import HostRoom from "./pages/live/HostRoom.tsx";
 import JoinRoom from "./pages/live/JoinRoom.tsx";
@@ -28,6 +30,7 @@ const App = () => (
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/results" element={<Results />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/live/host" element={<HostCreate />} />
           <Route path="/live/host/:roomId" element={<HostRoom />} />
           <Route path="/live/join" element={<JoinRoom />} />
