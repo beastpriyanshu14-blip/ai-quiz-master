@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Copy, Play, Pause, SkipForward, Square, Users, ArrowLeft, Lock, Hash } from "lucide-react";
+import { Copy, Play, Pause, SkipForward, Square, Users, ArrowLeft, Lock, Hash, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getHostToken } from "@/lib/live";
 import { Button } from "@/components/ui/button";
@@ -120,7 +120,11 @@ export default function HostRoom() {
   };
   const endQuiz = async () => {
     await supabase.from("live_rooms").update({ status: "ended" }).eq("id", room.id);
-    toast.success("Quiz ended");
+    toast.success("Quiz ended — click Reveal Results to share with players");
+  };
+  const revealResults = async () => {
+    await supabase.from("live_rooms").update({ status: "ended", reveal_results: true }).eq("id", room.id);
+    toast.success("Results revealed to all players!");
   };
   const kick = async (participantId: string) => {
     await supabase.from("live_participants").update({ is_kicked: true }).eq("id", participantId);
@@ -196,9 +200,14 @@ export default function HostRoom() {
               <div className="text-center py-8">
                 <Users className="size-12 mx-auto text-primary mb-4" />
                 <h3 className="text-xl font-display font-bold mb-2">Waiting in lobby</h3>
-                <p className="text-muted-foreground mb-6">
-                  {activePart.length} {activePart.length === 1 ? "participant" : "participants"} joined ·{" "}
+                <p className="text-muted-foreground mb-2">
+                  <span className="text-foreground font-semibold">{activePart.length}</span>
+                  {room.max_participants ? ` / ${room.max_participants}` : ""}{" "}
+                  {activePart.length === 1 ? "participant" : "participants"} joined ·{" "}
                   {questions.length} questions ready
+                </p>
+                <p className="text-xs text-muted-foreground mb-6">
+                  Share the room code & password with players, then start the quiz.
                 </p>
                 <Button
                   onClick={startQuiz}
@@ -279,10 +288,24 @@ export default function HostRoom() {
               <div className="text-center py-8">
                 <div className="text-5xl mb-4">🏁</div>
                 <h3 className="text-2xl font-display font-bold mb-2">Quiz ended</h3>
-                <p className="text-muted-foreground mb-6">Check the final leaderboard →</p>
-                <Button onClick={() => navigate("/setup")} variant="outline">
-                  Back to Setup
-                </Button>
+                <p className="text-muted-foreground mb-6">
+                  {room.reveal_results
+                    ? "Results are visible to all players."
+                    : "Results are still hidden from players. Click below when you're ready to share."}
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {!room.reveal_results && (
+                    <Button
+                      onClick={revealResults}
+                      className="h-12 px-8 bg-gradient-brand hover:opacity-90 hover:scale-[1.02] transition-all shadow-glow"
+                    >
+                      <Eye className="size-4 mr-2" /> Reveal Results
+                    </Button>
+                  )}
+                  <Button onClick={() => navigate("/setup")} variant="outline">
+                    Back to Setup
+                  </Button>
+                </div>
               </div>
             )}
           </div>

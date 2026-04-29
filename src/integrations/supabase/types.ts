@@ -67,6 +67,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "live_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "live_questions_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "live_answers_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -166,8 +173,10 @@ export type Database = {
           host_name: string
           host_token: string
           id: string
+          max_participants: number | null
           password: string
           question_started_at: string | null
+          reveal_results: boolean
           seconds_per_question: number
           status: string
           topic: string
@@ -182,8 +191,10 @@ export type Database = {
           host_name: string
           host_token: string
           id?: string
+          max_participants?: number | null
           password: string
           question_started_at?: string | null
+          reveal_results?: boolean
           seconds_per_question?: number
           status?: string
           topic: string
@@ -198,8 +209,10 @@ export type Database = {
           host_name?: string
           host_token?: string
           id?: string
+          max_participants?: number | null
           password?: string
           question_started_at?: string | null
+          reveal_results?: boolean
           seconds_per_question?: number
           status?: string
           topic?: string
@@ -210,10 +223,72 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      live_questions_safe: {
+        Row: {
+          id: string | null
+          options: Json | null
+          order_index: number | null
+          question: string | null
+          room_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question?: string | null
+          room_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question?: string | null
+          room_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_questions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      create_live_room: {
+        Args: {
+          p_code: string
+          p_difficulty: string
+          p_host_name: string
+          p_host_token: string
+          p_max_participants: number
+          p_password: string
+          p_questions: Json
+          p_seconds_per_question: number
+          p_topic: string
+        }
+        Returns: Json
+      }
+      join_live_room: {
+        Args: {
+          p_code: string
+          p_display_name: string
+          p_password: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      submit_live_answer: {
+        Args: {
+          p_participant_token: string
+          p_question_id: string
+          p_room_id: string
+          p_selected: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

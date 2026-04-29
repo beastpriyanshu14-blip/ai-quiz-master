@@ -35,6 +35,7 @@ export default function HostCreate() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [num, setNum] = useState(5);
   const [seconds, setSeconds] = useState(20);
+  const [maxPart, setMaxPart] = useState<string>(""); // blank = unlimited
   const [password, setPassword] = useState("");
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQ()]);
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,19 @@ export default function HostCreate() {
       toast.error("Set a password (min 4 characters)");
       return;
     }
+    if (num < 1 || num > 200) {
+      toast.error("Number of questions must be between 1 and 200");
+      return;
+    }
+    if (seconds < 5 || seconds > 600) {
+      toast.error("Timer must be between 5 and 600 seconds");
+      return;
+    }
+    const maxP = maxPart.trim() === "" ? null : Number(maxPart);
+    if (maxP !== null && (!Number.isFinite(maxP) || maxP < 1 || maxP > 1000)) {
+      toast.error("Max participants must be 1–1000 (or leave blank for unlimited)");
+      return;
+    }
 
     let finalQuestions: QuizQuestion[] = [];
     let resolvedTopic = topic.trim();
@@ -113,45 +127,28 @@ export default function HostCreate() {
     const code = generateRoomCode();
     const hostToken = generateToken();
 
-    const { data: room, error: roomErr } = await supabase
-      .from("live_rooms")
-      .insert({
-        code,
-        password,
-        host_token: hostToken,
-        host_name: user!.name,
-        topic: resolvedTopic,
-        difficulty,
-        seconds_per_question: seconds,
-        total_questions: finalQuestions.length,
-      })
-      .select()
-      .single();
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("create_live_room", {
+      p_code: code,
+      p_password: password,
+      p_host_token: hostToken,
+      p_host_name: user!.name,
+      p_topic: resolvedTopic,
+      p_difficulty: difficulty,
+      p_seconds_per_question: seconds,
+      p_max_participants: maxP,
+      p_questions: finalQuestions as any,
+    });
 
-    if (roomErr || !room) {
-      toast.error("Failed to create room");
+    const result = rpcData as { ok?: boolean; room_id?: string; error?: string } | null;
+    if (rpcErr || !result?.ok || !result.room_id) {
+      toast.error(result?.error || rpcErr?.message || "Failed to create room");
       setLoading(false);
       return;
     }
 
-    const rows = finalQuestions.map((q, i) => ({
-      room_id: room.id,
-      order_index: i,
-      question: q.question,
-      options: q.options,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation || "",
-    }));
-    const { error: qErr } = await supabase.from("live_questions").insert(rows);
-    if (qErr) {
-      toast.error("Failed to save questions");
-      setLoading(false);
-      return;
-    }
-
-    saveHostToken(room.id, hostToken);
+    saveHostToken(result.room_id, hostToken);
     toast.success(`Room created! Code: ${code}`);
-    navigate(`/live/host/${room.id}`);
+    navigate(`/live/host/${result.room_id}`);
   };
 
   return (
@@ -250,46 +247,51 @@ export default function HostCreate() {
             </div>
             <div>
               <label className="block text-sm font-semibold mb-2">Seconds per question</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[10, 15, 20, 30].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSeconds(s)}
-                    className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all ${
-                      seconds === s
-                        ? "border-primary bg-primary/10 shadow-glow"
-                        : "border-border bg-secondary hover:border-primary/40"
-                    }`}
-                  >
-                    {s}s
-                  </button>
-                ))}
-              </div>
+              <input
+                type="number"
+                min={5}
+                max={600}
+                value={seconds}
+                onChange={(e) => setSeconds(Math.max(0, Number(e.target.value) || 0))}
+                placeholder="20"
+                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground mt-1">5 – 600 seconds</p>
             </div>
           </div>
 
-          {mode === "ai" && (
-            <div>
-              <label className="block text-sm font-semibold mb-2">Number of Questions</label>
-              <div className="flex flex-wrap gap-2">
-                {[3, 5, 10, 15].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNum(n)}
-                    className={`min-w-12 px-4 py-2 rounded-full font-semibold text-sm border transition-all ${
-                      num === n
-                        ? "bg-gradient-brand text-primary-foreground border-transparent shadow-glow"
-                        : "bg-secondary border-border hover:border-primary/40"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+          <div className="grid sm:grid-cols-2 gap-5">
+            {mode === "ai" && (
+              <div>
+                <label className="block text-sm font-semibold mb-2">Number of Questions</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={num}
+                  onChange={(e) => setNum(Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="10"
+                  className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">1 – 200 questions</p>
               </div>
+            )}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                <Users className="inline size-3.5 mr-1" /> Max Participants
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={maxPart}
+                onChange={(e) => setMaxPart(e.target.value)}
+                placeholder="Unlimited"
+                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave blank for unlimited</p>
             </div>
-          )}
+          </div>
 
           {mode === "manual" && (
             <div>

@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid difficulty" }, 400);
     }
     const n = Number(num_questions) || 10;
-    if (n < 3 || n > 30) {
-      return json({ error: "Questions must be 3-30" }, 400);
+    if (n < 1 || n > 200) {
+      return json({ error: "Questions must be 1-200" }, 400);
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -131,8 +131,8 @@ Vary types: definitions, scenarios, comparisons, fill-in-the-blank style. Make s
         q.explanation,
     );
 
-    if (validated.length < 3) {
-      return json({ error: "Not enough valid questions generated. Try a different topic." }, 500);
+    if (validated.length < 1) {
+      return json({ error: "No valid questions generated. Try a different topic." }, 500);
     }
 
     return json({ questions: validated, topic: topic.trim(), difficulty });

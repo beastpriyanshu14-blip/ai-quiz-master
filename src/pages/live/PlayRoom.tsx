@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Clock, Trophy, ArrowLeft } from "lucide-react";
+import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getParticipant, calcPoints } from "@/lib/live";
+import { getParticipant } from "@/lib/live";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Leaderboard } from "@/components/live/Leaderboard";
 import { toast } from "sonner";
-import type { LiveRoom, LiveQuestion, LiveParticipant, LiveAnswer } from "@/types/live";
+import type { LiveRoom, LiveQuestionSafe, LiveParticipant, LiveAnswer } from "@/types/live";
 
 export default function PlayRoom() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const [room, setRoom] = useState<LiveRoom | null>(null);
-  const [questions, setQuestions] = useState<LiveQuestion[]>([]);
+  const [questions, setQuestions] = useState<LiveQuestionSafe[]>([]);
   const [participants, setParticipants] = useState<LiveParticipant[]>([]);
   const [myAnswers, setMyAnswers] = useState<LiveAnswer[]>([]);
+  const [allAnswers, setAllAnswers] = useState<LiveAnswer[]>([]); // populated only after reveal
   const [selected, setSelected] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const submittingRef = useRef(false);
@@ -64,12 +65,24 @@ export default function PlayRoom() {
     };
   }, [roomId]);
 
+  // When host reveals, load full questions (with correct_answer) + everyone's answers for analytics
+  useEffect(() => {
+    if (room?.reveal_results && room.status === "ended") {
+      void loadRevealedData();
+    }
+  }, [room?.reveal_results, room?.status]);
+
   const load = async () => {
     const { data: r } = await supabase.from("live_rooms").select("*").eq("id", roomId!).maybeSingle();
     if (!r) { navigate("/setup"); return; }
     setRoom(r as LiveRoom);
-    const { data: qs } = await supabase.from("live_questions").select("*").eq("room_id", roomId!).order("order_index");
-    setQuestions((qs ?? []) as LiveQuestion[]);
+    // SAFE view — never includes correct_answer or explanation
+    const { data: qs } = await supabase
+      .from("live_questions_safe" as any)
+      .select("*")
+      .eq("room_id", roomId!)
+      .order("order_index");
+    setQuestions(((qs ?? []) as unknown) as LiveQuestionSafe[]);
     await refetchParticipants();
     await refetchMyAnswers();
   };
@@ -85,6 +98,12 @@ export default function PlayRoom() {
       .eq("room_id", roomId!)
       .eq("participant_id", me.participantId);
     setMyAnswers((data ?? []) as LiveAnswer[]);
+  };
+  const loadRevealedData = async () => {
+    // Fetch full questions (now allowed via host having ended; we read via questions+answers join workaround:
+    // since questions have host-only RLS, fetch correctness from live_answers (server already validated).
+    const { data: ans } = await supabase.from("live_answers").select("*").eq("room_id", roomId!);
+    setAllAnswers((ans ?? []) as LiveAnswer[]);
   };
 
   // Detect kick
@@ -113,37 +132,33 @@ export default function PlayRoom() {
     ? myAnswers.find((a) => a.question_order_index === room.current_question_index)
     : undefined;
   const locked = !!myAnswerForCurrent || remainingMs <= 0 || room.status !== "active";
-  const reveal = remainingMs <= 0 || !!myAnswerForCurrent;
 
   const submit = async (answer: string) => {
     if (!currentQ || submittingRef.current || locked) return;
     submittingRef.current = true;
     setSelected(answer);
-    const timeTakenMs = elapsedMs;
-    const isCorrect = answer === currentQ.correct_answer;
-    const points = calcPoints(isCorrect, timeTakenMs, totalMs);
 
-    const { error } = await supabase.from("live_answers").insert({
-      room_id: room.id,
-      question_id: currentQ.id,
-      participant_id: me.participantId,
-      question_order_index: room.current_question_index,
-      selected_answer: answer,
-      is_correct: isCorrect,
-      time_taken_ms: timeTakenMs,
-      points_earned: points,
+    const { data, error } = await supabase.rpc("submit_live_answer", {
+      p_room_id: room.id,
+      p_question_id: currentQ.id,
+      p_participant_token: me.token,
+      p_selected: answer,
     });
-    if (error) {
+    const result = data as { ok?: boolean; error?: string } | null;
+
+    if (error || !result?.ok) {
       submittingRef.current = false;
       setSelected(null);
-      toast.error("Couldn't submit — try again");
+      toast.error(result?.error || "Couldn't submit — try again");
       return;
     }
-
-    // Increment my score (read-modify-write)
-    const newScore = (meRecord?.score ?? 0) + points;
-    await supabase.from("live_participants").update({ score: newScore, last_seen_at: new Date().toISOString() }).eq("id", me.participantId);
+    await refetchMyAnswers();
   };
+
+  // ------ Analytics (only after reveal) ------
+  const myCorrect = allAnswers.filter((a) => a.participant_id === me.participantId && a.is_correct).length;
+  const myTotal = allAnswers.filter((a) => a.participant_id === me.participantId).length;
+  const accuracy = myTotal ? Math.round((myCorrect / myTotal) * 100) : 0;
 
   return (
     <main className="min-h-screen p-4 sm:p-6">
@@ -158,9 +173,11 @@ export default function PlayRoom() {
           <span className="font-mono bg-secondary border border-border rounded-full px-3 py-1">
             {room.code}
           </span>
-          <span className="font-mono bg-primary/15 text-primary border border-primary/30 rounded-full px-3 py-1">
-            {(meRecord?.score ?? 0).toLocaleString()} pts
-          </span>
+          {room.reveal_results && (
+            <span className="font-mono bg-primary/15 text-primary border border-primary/30 rounded-full px-3 py-1">
+              {(meRecord?.score ?? 0).toLocaleString()} pts
+            </span>
+          )}
         </div>
       </header>
 
@@ -174,6 +191,10 @@ export default function PlayRoom() {
             <p className="text-muted-foreground mb-6">
               Topic: <span className="text-foreground font-medium">{room.topic}</span>
             </p>
+            <div className="text-sm text-muted-foreground mb-4">
+              {participants.filter((p) => !p.is_kicked).length} player(s) in lobby
+              {room.max_participants ? ` / ${room.max_participants}` : ""}
+            </div>
             <Leaderboard participants={participants} currentParticipantId={me.participantId} />
           </div>
         )}
@@ -215,9 +236,6 @@ export default function PlayRoom() {
               <div className="grid sm:grid-cols-2 gap-3 mb-4">
                 {currentQ.options.map((opt, i) => {
                   const isMyPick = (myAnswerForCurrent?.selected_answer ?? selected) === opt;
-                  const isCorrect = opt === currentQ.correct_answer;
-                  const showRight = reveal && isCorrect;
-                  const showWrong = reveal && isMyPick && !isCorrect;
                   return (
                     <button
                       key={opt}
@@ -225,14 +243,10 @@ export default function PlayRoom() {
                       onClick={() => submit(opt)}
                       disabled={locked}
                       className={`rounded-2xl border-2 px-4 py-3.5 text-left flex items-center gap-3 transition-all ${
-                        showRight
-                          ? "border-success bg-success/20"
-                          : showWrong
-                            ? "border-destructive bg-destructive/15"
-                            : isMyPick
-                              ? "border-primary bg-primary/15 shadow-glow"
-                              : "border-border bg-secondary/50 hover:border-primary/50 hover:bg-secondary"
-                      } ${locked && !isMyPick && !showRight ? "opacity-50" : ""}`}
+                        isMyPick
+                          ? "border-primary bg-primary/15 shadow-glow"
+                          : "border-border bg-secondary/50 hover:border-primary/50 hover:bg-secondary"
+                      } ${locked && !isMyPick ? "opacity-50" : ""}`}
                     >
                       <span
                         className={`size-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
@@ -247,36 +261,54 @@ export default function PlayRoom() {
                 })}
               </div>
 
-              {reveal && currentQ.explanation && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl bg-primary/5 border border-primary/20 p-4 text-sm"
-                >
-                  💡 {currentQ.explanation}
-                </motion.div>
+              {myAnswerForCurrent && (
+                <p className="text-xs text-center text-muted-foreground">
+                  ✓ Answer locked. Results will be revealed by the host at the end.
+                </p>
               )}
-              {myAnswerForCurrent && !reveal && (
-                <p className="text-xs text-center text-muted-foreground">Answer locked. Waiting for others...</p>
+              {!myAnswerForCurrent && remainingMs <= 0 && (
+                <p className="text-xs text-center text-warning">⏱ Time's up — waiting for next question.</p>
               )}
             </motion.div>
           </AnimatePresence>
         )}
 
-        {room.status === "ended" && (
+        {room.status === "ended" && !room.reveal_results && (
           <div className="glass-strong rounded-3xl p-8 text-center">
-            <div className="text-6xl mb-4">🏁</div>
-            <h2 className="text-3xl font-display font-bold mb-2">Game Over!</h2>
-            <p className="text-muted-foreground mb-6">Final score: <span className="text-foreground font-bold">{(meRecord?.score ?? 0).toLocaleString()}</span></p>
+            <LockIcon className="size-14 mx-auto text-primary mb-4" />
+            <h2 className="text-2xl font-display font-bold mb-2">Quiz finished!</h2>
+            <p className="text-muted-foreground">Waiting for the host to reveal results…</p>
           </div>
         )}
 
-        {/* Live leaderboard */}
-        {room.status !== "lobby" && (
-          <div className="glass-strong rounded-3xl p-5">
-            <h3 className="font-display font-bold mb-3">Live Leaderboard</h3>
-            <Leaderboard participants={participants} currentParticipantId={me.participantId} />
-          </div>
+        {room.status === "ended" && room.reveal_results && (
+          <>
+            <div className="glass-strong rounded-3xl p-8 text-center">
+              <div className="text-6xl mb-4">🏁</div>
+              <h2 className="text-3xl font-display font-bold mb-2">Final Results</h2>
+              <p className="text-muted-foreground mb-4">
+                Final score: <span className="text-foreground font-bold">{(meRecord?.score ?? 0).toLocaleString()}</span>
+              </p>
+              <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto text-sm">
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-2xl font-bold text-success">{myCorrect}</div>
+                  <div className="text-xs text-muted-foreground">Correct</div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-2xl font-bold">{myTotal}</div>
+                  <div className="text-xs text-muted-foreground">Answered</div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-2xl font-bold text-primary">{accuracy}%</div>
+                  <div className="text-xs text-muted-foreground">Accuracy</div>
+                </div>
+              </div>
+            </div>
+            <div className="glass-strong rounded-3xl p-5">
+              <h3 className="font-display font-bold mb-3">🏆 Final Leaderboard</h3>
+              <Leaderboard participants={participants} currentParticipantId={me.participantId} />
+            </div>
+          </>
         )}
       </div>
     </main>
