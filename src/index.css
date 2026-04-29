@@ -66,7 +66,55 @@
   }
 
   .dark {
-    /* same as :root — app is dark-only */
+    /* same as :root — dark is default */
+  }
+
+  .light {
+    --background: 210 40% 98%;
+    --foreground: 224 47% 12%;
+
+    --surface: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 47% 12%;
+    --card-border: 215 25% 88%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 47% 12%;
+
+    --primary: 239 84% 60%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 258 90% 60%;
+
+    --secondary: 215 25% 94%;
+    --secondary-foreground: 224 47% 12%;
+
+    --muted: 215 25% 94%;
+    --muted-foreground: 215 16% 40%;
+
+    --accent: 258 90% 60%;
+    --accent-foreground: 210 40% 98%;
+
+    --success: 158 64% 36%;
+    --success-foreground: 210 40% 98%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 210 40% 98%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 224 47% 8%;
+
+    --border: 215 25% 88%;
+    --input: 215 25% 94%;
+    --ring: 239 84% 60%;
+
+    --gradient-bg: linear-gradient(135deg, hsl(210 40% 98%), hsl(220 40% 96%));
+    --gradient-hero: radial-gradient(ellipse at top, hsl(239 84% 60% / 0.10), transparent 60%),
+                     radial-gradient(ellipse at bottom, hsl(258 90% 60% / 0.08), transparent 60%);
+    --shadow-card: 0 8px 32px -8px hsl(224 47% 40% / 0.15);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 47% 12%;
+    --sidebar-accent: 215 25% 94%;
+    --sidebar-accent-foreground: 224 47% 12%;
+    --sidebar-border: 215 25% 88%;
   }
 }
 
@@ -82,6 +130,7 @@
     font-family: 'Inter', system-ui, sans-serif;
     background-image: var(--gradient-hero);
     background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   h1, h2, h3, h4 {
     font-family: 'Poppins', 'Inter', sans-serif;
