@@ -60,6 +60,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "live_answers_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "live_participants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "live_answers_question_id_fkey"
             columns: ["question_id"]
             isOneToOne: false
@@ -67,17 +74,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "live_answers_question_id_fkey"
-            columns: ["question_id"]
+            foreignKeyName: "live_answers_room_id_fkey"
+            columns: ["room_id"]
             isOneToOne: false
-            referencedRelation: "live_questions_safe"
+            referencedRelation: "live_rooms"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "live_answers_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
-            referencedRelation: "live_rooms"
+            referencedRelation: "live_rooms_public"
             referencedColumns: ["id"]
           },
         ]
@@ -121,6 +128,13 @@ export type Database = {
             referencedRelation: "live_rooms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       live_questions: {
@@ -160,6 +174,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "live_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_questions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms_public"
             referencedColumns: ["id"]
           },
         ]
@@ -223,40 +244,133 @@ export type Database = {
       }
     }
     Views: {
-      live_questions_safe: {
+      live_participants_public: {
         Row: {
+          display_name: string | null
           id: string | null
-          options: Json | null
-          order_index: number | null
-          question: string | null
+          is_kicked: boolean | null
+          joined_at: string | null
+          last_seen_at: string | null
           room_id: string | null
+          score: number | null
         }
         Insert: {
+          display_name?: string | null
           id?: string | null
-          options?: Json | null
-          order_index?: number | null
-          question?: string | null
+          is_kicked?: boolean | null
+          joined_at?: string | null
+          last_seen_at?: string | null
           room_id?: string | null
+          score?: number | null
         }
         Update: {
+          display_name?: string | null
           id?: string | null
-          options?: Json | null
-          order_index?: number | null
-          question?: string | null
+          is_kicked?: boolean | null
+          joined_at?: string | null
+          last_seen_at?: string | null
           room_id?: string | null
+          score?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "live_questions_room_id_fkey"
+            foreignKeyName: "live_participants_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "live_rooms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "live_rooms_public"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      live_rooms_public: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          current_question_index: number | null
+          difficulty: string | null
+          host_name: string | null
+          id: string | null
+          max_participants: number | null
+          question_started_at: string | null
+          reveal_results: boolean | null
+          seconds_per_question: number | null
+          status: string | null
+          topic: string | null
+          total_questions: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          current_question_index?: number | null
+          difficulty?: string | null
+          host_name?: string | null
+          id?: string | null
+          max_participants?: number | null
+          question_started_at?: string | null
+          reveal_results?: boolean | null
+          seconds_per_question?: number | null
+          status?: string | null
+          topic?: string | null
+          total_questions?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          current_question_index?: number | null
+          difficulty?: string | null
+          host_name?: string | null
+          id?: string | null
+          max_participants?: number | null
+          question_started_at?: string | null
+          reveal_results?: boolean | null
+          seconds_per_question?: number | null
+          status?: string | null
+          topic?: string | null
+          total_questions?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
+      _assert_host: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          current_question_index: number
+          difficulty: string
+          host_name: string
+          host_token: string
+          id: string
+          max_participants: number | null
+          password: string
+          question_started_at: string | null
+          reveal_results: boolean
+          seconds_per_question: number
+          status: string
+          topic: string
+          total_questions: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_rooms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _req_host_token: { Args: never; Returns: string }
+      _req_participant_token: { Args: never; Returns: string }
       create_live_room: {
         Args: {
           p_code: string
@@ -269,6 +383,121 @@ export type Database = {
           p_seconds_per_question: number
           p_topic: string
         }
+        Returns: Json
+      }
+      get_room_public: {
+        Args: { p_room_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          current_question_index: number
+          difficulty: string
+          host_name: string
+          id: string
+          max_participants: number
+          question_started_at: string
+          reveal_results: boolean
+          seconds_per_question: number
+          status: string
+          topic: string
+          total_questions: number
+          updated_at: string
+        }[]
+      }
+      get_room_public_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          code: string
+          created_at: string
+          current_question_index: number
+          difficulty: string
+          host_name: string
+          id: string
+          max_participants: number
+          question_started_at: string
+          reveal_results: boolean
+          seconds_per_question: number
+          status: string
+          topic: string
+          total_questions: number
+          updated_at: string
+        }[]
+      }
+      get_room_questions_safe: {
+        Args: { p_room_id: string }
+        Returns: {
+          id: string
+          options: Json
+          order_index: number
+          question: string
+          room_id: string
+        }[]
+      }
+      host_advance_question: {
+        Args: { p_host_token: string; p_index: number; p_room_id: string }
+        Returns: Json
+      }
+      host_end: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: Json
+      }
+      host_get_questions: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: {
+          correct_answer: string
+          explanation: string
+          id: string
+          options: Json
+          order_index: number
+          question: string
+          room_id: string
+        }[]
+      }
+      host_get_room: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          current_question_index: number
+          difficulty: string
+          host_name: string
+          host_token: string
+          id: string
+          max_participants: number | null
+          password: string
+          question_started_at: string | null
+          reveal_results: boolean
+          seconds_per_question: number
+          status: string
+          topic: string
+          total_questions: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_rooms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      host_kick: {
+        Args: {
+          p_host_token: string
+          p_participant_id: string
+          p_room_id: string
+        }
+        Returns: Json
+      }
+      host_pause: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: Json
+      }
+      host_resume: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: Json
+      }
+      host_reveal: {
+        Args: { p_host_token: string; p_room_id: string }
         Returns: Json
       }
       join_live_room: {
