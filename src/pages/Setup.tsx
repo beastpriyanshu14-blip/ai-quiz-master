@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Search, Sparkles, BarChart3, Bot, Radio, LogIn } from "lucide-react";
@@ -7,6 +7,7 @@ import { useQuizStore } from "@/store/quizStore";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { UserAvatar } from "@/components/UserAvatar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Difficulty } from "@/types/quiz";
@@ -40,6 +41,7 @@ const TIPS = [
 export default function Setup() {
   const navigate = useNavigate();
   const user = storage.getUser();
+  const totalPlayed = useMemo(() => storage.getHistory().length, []);
   const { setSetup, setQuestions } = useQuizStore();
 
   const [topic, setTopic] = useState("");
@@ -111,11 +113,12 @@ export default function Setup() {
           </Button>
           <BrandLogo size="md" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button variant="ghost" size="sm" onClick={() => navigate("/stats")}>
-            <BarChart3 className="size-4 mr-1.5" />
+            <BarChart3 className="size-4 sm:mr-1.5" />
             <span className="hidden sm:inline">My Stats</span>
           </Button>
+          <ThemeToggle />
           <UserAvatar />
         </div>
       </header>
@@ -127,12 +130,29 @@ export default function Setup() {
         className="max-w-3xl mx-auto"
       >
         {user && (
-          <div className="text-center mb-8">
-            <h1 className="text-3xl sm:text-4xl font-display font-bold mb-2">
-              Welcome back, <span className="text-gradient">{user.name.split(" ")[0]}</span>!
+          <motion.section
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-10"
+          >
+            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
+              <Sparkles className="size-3" /> AI-Powered Quiz Platform
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold mb-3 leading-tight">
+              Welcome back, <span className="text-gradient">{user.name.split(" ")[0]}</span>
             </h1>
-            <p className="text-muted-foreground">Configure your quiz and let's begin</p>
-          </div>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto">
+              Create AI quizzes on any topic, or join a live room with friends.
+            </p>
+            {totalPlayed > 0 && (
+              <div className="mt-5 inline-flex items-center gap-2 text-sm bg-secondary/60 border border-border rounded-full px-4 py-1.5">
+                <BarChart3 className="size-3.5 text-primary" />
+                <span className="font-semibold">{totalPlayed}</span>
+                <span className="text-muted-foreground">{totalPlayed === 1 ? "quiz" : "quizzes"} played</span>
+              </div>
+            )}
+          </motion.section>
         )}
 
         {/* Live quiz entry points */}

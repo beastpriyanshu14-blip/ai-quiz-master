@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
-import { ArrowLeft, Trash2, Sparkles, Trophy, Target, TrendingUp, Star } from "lucide-react";
+import { ArrowLeft, Trash2, Sparkles, Trophy, Target, TrendingUp, Star, CheckCircle2, Percent } from "lucide-react";
 import { storage, formatTime } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { BrandLogo } from "@/components/BrandLogo";
 import { UserAvatar } from "@/components/UserAvatar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,12 +32,15 @@ export default function Stats() {
     const total = history.length;
     const best = Math.max(...history.map((h) => h.score));
     const avg = Math.round(history.reduce((s, h) => s + h.score, 0) / total);
+    const totalQuestions = history.reduce((s, h) => s + h.totalQuestions, 0);
+    const totalCorrect = history.reduce((s, h) => s + h.correctAnswers, 0);
+    const accuracy = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
     const topicCounts: Record<string, number> = {};
     history.forEach((h) => {
       topicCounts[h.topic] = (topicCounts[h.topic] || 0) + 1;
     });
     const fav = Object.entries(topicCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
-    return { total, best, avg, fav };
+    return { total, best, avg, fav, totalCorrect, totalQuestions, accuracy };
   }, [history]);
 
   const chartData = useMemo(() => {
@@ -66,7 +71,10 @@ export default function Stats() {
           </Button>
           <BrandLogo size="md" />
         </div>
-        <UserAvatar />
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <UserAvatar />
+        </div>
       </header>
 
       <div className="max-w-5xl mx-auto space-y-8">
@@ -106,9 +114,34 @@ export default function Stats() {
             {/* Summary */}
             <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <SummaryCard icon={Target} label="Total Quizzes" value={summary!.total} />
+              <SummaryCard icon={CheckCircle2} label="Correct Answers" value={`${summary!.totalCorrect}/${summary!.totalQuestions}`} small />
               <SummaryCard icon={Trophy} label="Best Score" value={`${summary!.best}%`} />
               <SummaryCard icon={TrendingUp} label="Avg Score" value={`${summary!.avg}%`} />
-              <SummaryCard icon={Star} label="Fav Topic" value={summary!.fav} small />
+            </section>
+
+            {/* Accuracy + Fav topic */}
+            <section className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="glass rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Percent className="size-4 text-primary" /> Overall Accuracy
+                  </div>
+                  <div className="font-display font-bold text-2xl">{summary!.accuracy}%</div>
+                </div>
+                <Progress value={summary!.accuracy} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {summary!.totalCorrect} correct out of {summary!.totalQuestions} questions
+                </p>
+              </div>
+              <div className="glass rounded-2xl p-5 flex items-center gap-4">
+                <div className="size-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Star className="size-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Favorite Topic</div>
+                  <div className="font-display font-bold text-xl truncate">{summary!.fav}</div>
+                </div>
+              </div>
             </section>
 
             {/* Chart */}
