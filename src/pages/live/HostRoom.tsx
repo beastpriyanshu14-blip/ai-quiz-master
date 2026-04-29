@@ -288,10 +288,24 @@ export default function HostRoom() {
               <div className="text-center py-8">
                 <div className="text-5xl mb-4">🏁</div>
                 <h3 className="text-2xl font-display font-bold mb-2">Quiz ended</h3>
-                <p className="text-muted-foreground mb-6">Check the final leaderboard →</p>
-                <Button onClick={() => navigate("/setup")} variant="outline">
-                  Back to Setup
-                </Button>
+                <p className="text-muted-foreground mb-6">
+                  {room.reveal_results
+                    ? "Results are visible to all players."
+                    : "Results are still hidden from players. Click below when you're ready to share."}
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {!room.reveal_results && (
+                    <Button
+                      onClick={revealResults}
+                      className="h-12 px-8 bg-gradient-brand hover:opacity-90 hover:scale-[1.02] transition-all shadow-glow"
+                    >
+                      <Eye className="size-4 mr-2" /> Reveal Results
+                    </Button>
+                  )}
+                  <Button onClick={() => navigate("/setup")} variant="outline">
+                    Back to Setup
+                  </Button>
+                </div>
               </div>
             )}
           </div>
