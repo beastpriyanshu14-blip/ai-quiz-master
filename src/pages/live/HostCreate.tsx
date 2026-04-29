@@ -247,46 +247,51 @@ export default function HostCreate() {
             </div>
             <div>
               <label className="block text-sm font-semibold mb-2">Seconds per question</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[10, 15, 20, 30].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSeconds(s)}
-                    className={`rounded-xl py-2.5 text-sm font-semibold border-2 transition-all ${
-                      seconds === s
-                        ? "border-primary bg-primary/10 shadow-glow"
-                        : "border-border bg-secondary hover:border-primary/40"
-                    }`}
-                  >
-                    {s}s
-                  </button>
-                ))}
-              </div>
+              <input
+                type="number"
+                min={5}
+                max={600}
+                value={seconds}
+                onChange={(e) => setSeconds(Math.max(0, Number(e.target.value) || 0))}
+                placeholder="20"
+                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground mt-1">5 – 600 seconds</p>
             </div>
           </div>
 
-          {mode === "ai" && (
-            <div>
-              <label className="block text-sm font-semibold mb-2">Number of Questions</label>
-              <div className="flex flex-wrap gap-2">
-                {[3, 5, 10, 15].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNum(n)}
-                    className={`min-w-12 px-4 py-2 rounded-full font-semibold text-sm border transition-all ${
-                      num === n
-                        ? "bg-gradient-brand text-primary-foreground border-transparent shadow-glow"
-                        : "bg-secondary border-border hover:border-primary/40"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+          <div className="grid sm:grid-cols-2 gap-5">
+            {mode === "ai" && (
+              <div>
+                <label className="block text-sm font-semibold mb-2">Number of Questions</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={num}
+                  onChange={(e) => setNum(Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="10"
+                  className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">1 – 200 questions</p>
               </div>
+            )}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                <Users className="inline size-3.5 mr-1" /> Max Participants
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={maxPart}
+                onChange={(e) => setMaxPart(e.target.value)}
+                placeholder="Unlimited"
+                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-base font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave blank for unlimited</p>
             </div>
-          )}
+          </div>
 
           {mode === "manual" && (
             <div>
