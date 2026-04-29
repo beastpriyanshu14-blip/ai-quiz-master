@@ -35,6 +35,7 @@ export default function HostCreate() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [num, setNum] = useState(5);
   const [seconds, setSeconds] = useState(20);
+  const [maxPart, setMaxPart] = useState<string>(""); // blank = unlimited
   const [password, setPassword] = useState("");
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQ()]);
   const [loading, setLoading] = useState(false);
