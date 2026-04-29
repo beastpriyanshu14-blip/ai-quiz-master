@@ -21,6 +21,10 @@ export default function HostRoom() {
 
   const hostToken = roomId ? getHostToken(roomId) : null;
 
+  const callHost = async <T,>(fn: string, args: Record<string, unknown>) => {
+    return supabase.rpc(fn as any, { p_room_id: roomId, p_host_token: hostToken, ...args });
+  };
+
   useEffect(() => {
     if (!roomId) return navigate("/setup");
     if (!hostToken) {
@@ -37,13 +41,13 @@ export default function HostRoom() {
     return () => clearInterval(t);
   }, []);
 
-  // Realtime subscriptions
+  // Realtime — uses public view for room status; full sensitive room data fetched via RPC.
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !hostToken) return;
     const ch = supabase
       .channel(`host-room-${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, (p) => {
-        if (p.new) setRoom(p.new as LiveRoom);
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, () => {
+        void refetchRoom();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
@@ -55,20 +59,42 @@ export default function HostRoom() {
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [roomId]);
+  }, [roomId, hostToken]);
+
+  const refetchRoom = async () => {
+    const { data } = await supabase.rpc("host_get_room" as any, {
+      p_room_id: roomId,
+      p_host_token: hostToken,
+    });
+    if (data) setRoom(data as LiveRoom);
+  };
 
   const load = async () => {
-    const { data: r } = await supabase.from("live_rooms").select("*").eq("id", roomId!).maybeSingle();
-    if (!r) { navigate("/setup"); return; }
+    const { data: r, error: rErr } = await supabase.rpc("host_get_room" as any, {
+      p_room_id: roomId,
+      p_host_token: hostToken,
+    });
+    if (rErr || !r) {
+      toast.error("Could not load room — invalid host session");
+      navigate("/setup");
+      return;
+    }
     setRoom(r as LiveRoom);
-    const { data: qs } = await supabase.from("live_questions").select("*").eq("room_id", roomId!).order("order_index");
-    setQuestions((qs ?? []) as LiveQuestion[]);
+
+    const { data: qs } = await supabase.rpc("host_get_questions" as any, {
+      p_room_id: roomId,
+      p_host_token: hostToken,
+    });
+    setQuestions(((qs ?? []) as unknown) as LiveQuestion[]);
     await refetchParticipants();
     await refetchAnswers();
   };
   const refetchParticipants = async () => {
-    const { data } = await supabase.from("live_participants").select("*").eq("room_id", roomId!);
-    setParticipants((data ?? []) as LiveParticipant[]);
+    const { data } = await supabase
+      .from("live_participants_public" as any)
+      .select("*")
+      .eq("room_id", roomId!);
+    setParticipants(((data ?? []) as unknown) as LiveParticipant[]);
   };
   const refetchAnswers = async () => {
     const { data } = await supabase.from("live_answers").select("*").eq("room_id", roomId!);
@@ -90,16 +116,18 @@ export default function HostRoom() {
     ? answers.filter((a) => a.question_order_index === room.current_question_index).length
     : 0;
 
-  const advanceTo = async (index: number) => {
-    if (index >= room.total_questions) {
-      await endQuiz();
-      return;
+  const handleErr = (data: any, error: any, fallback: string) => {
+    const result = data as { ok?: boolean; error?: string } | null;
+    if (error || !result?.ok) {
+      toast.error(result?.error || error?.message || fallback);
+      return false;
     }
-    await supabase.from("live_rooms").update({
-      status: "active",
-      current_question_index: index,
-      question_started_at: new Date().toISOString(),
-    }).eq("id", room.id);
+    return true;
+  };
+
+  const advanceTo = async (index: number) => {
+    const { data, error } = await callHost("host_advance_question", { p_index: index });
+    handleErr(data, error, "Could not advance");
   };
 
   const startQuiz = async () => {
@@ -112,23 +140,30 @@ export default function HostRoom() {
   };
   const next = async () => advanceTo(room.current_question_index + 1);
   const pause = async () => {
-    await supabase.from("live_rooms").update({ status: "paused" }).eq("id", room.id);
+    const { data, error } = await callHost("host_pause", {});
+    handleErr(data, error, "Pause failed");
   };
   const resume = async () => {
-    // Restart this question's timer
-    await supabase.from("live_rooms").update({ status: "active", question_started_at: new Date().toISOString() }).eq("id", room.id);
+    const { data, error } = await callHost("host_resume", {});
+    handleErr(data, error, "Resume failed");
   };
   const endQuiz = async () => {
-    await supabase.from("live_rooms").update({ status: "ended" }).eq("id", room.id);
-    toast.success("Quiz ended — click Reveal Results to share with players");
+    const { data, error } = await callHost("host_end", {});
+    if (handleErr(data, error, "End failed")) {
+      toast.success("Quiz ended — click Reveal Results to share with players");
+    }
   };
   const revealResults = async () => {
-    await supabase.from("live_rooms").update({ status: "ended", reveal_results: true }).eq("id", room.id);
-    toast.success("Results revealed to all players!");
+    const { data, error } = await callHost("host_reveal", {});
+    if (handleErr(data, error, "Reveal failed")) {
+      toast.success("Results revealed to all players!");
+    }
   };
   const kick = async (participantId: string) => {
-    await supabase.from("live_participants").update({ is_kicked: true }).eq("id", participantId);
-    toast.info("Participant removed");
+    const { data, error } = await callHost("host_kick", { p_participant_id: participantId });
+    if (handleErr(data, error, "Kick failed")) {
+      toast.info("Participant removed");
+    }
   };
 
   const copyCode = () => {
