@@ -29,67 +29,35 @@ export default function JoinRoom() {
     if (name.trim().length < 2) return toast.error("Display name must be at least 2 characters");
 
     setLoading(true);
-    const { data: room, error } = await supabase
-      .from("live_rooms")
-      .select("*")
-      .eq("code", c)
-      .maybeSingle();
-
-    if (error || !room) {
-      toast.error("Room not found");
-      setLoading(false);
-      return;
-    }
-    if (room.password !== password) {
-      toast.error("Incorrect password");
-      setLoading(false);
-      return;
-    }
-    if (room.status === "ended") {
-      toast.error("This room has ended");
-      setLoading(false);
-      return;
-    }
-
-    // Check duplicate name
-    const { data: existing } = await supabase
-      .from("live_participants")
-      .select("id, is_kicked")
-      .eq("room_id", room.id)
-      .eq("display_name", name.trim())
-      .maybeSingle();
-
-    if (existing) {
-      if (existing.is_kicked) {
-        toast.error("You were removed from this room");
-        setLoading(false);
-        return;
-      }
-      toast.error("That display name is already taken in this room");
-      setLoading(false);
-      return;
-    }
-
     const token = generateToken();
-    const { data: part, error: pErr } = await supabase
-      .from("live_participants")
-      .insert({
-        room_id: room.id,
-        participant_token: token,
-        display_name: name.trim(),
-      })
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc("join_live_room", {
+      p_code: c,
+      p_password: password,
+      p_display_name: name.trim(),
+      p_token: token,
+    });
 
-    if (pErr || !part) {
-      toast.error("Failed to join room");
+    const result = data as { ok?: boolean; room_id?: string; participant_id?: string; error?: string } | null;
+
+    if (error || !result?.ok || !result.room_id || !result.participant_id) {
+      const errMap: Record<string, string> = {
+        "room not found": "Room not found",
+        "wrong password": "Incorrect password",
+        "room ended": "This room has ended",
+        "name taken": "That display name is taken in this room",
+        "room full": "Room is full",
+        "kicked": "You were removed from this room",
+        "quiz already started": "Quiz already in progress — can't join now",
+        "name too short": "Display name too short",
+      };
+      toast.error(errMap[result?.error ?? ""] || result?.error || error?.message || "Failed to join");
       setLoading(false);
       return;
     }
 
-    saveParticipant(room.id, { token, name: name.trim(), participantId: part.id });
-    toast.success(`Joined ${room.code}!`);
-    navigate(`/live/play/${room.id}`);
+    saveParticipant(result.room_id, { token, name: name.trim(), participantId: result.participant_id });
+    toast.success(`Joined ${c}!`);
+    navigate(`/live/play/${result.room_id}`);
   };
 
   return (
