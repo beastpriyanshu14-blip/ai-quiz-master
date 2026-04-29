@@ -82,7 +82,7 @@ export default function PlayRoom() {
       .select("*")
       .eq("room_id", roomId!)
       .order("order_index");
-    setQuestions((qs ?? []) as LiveQuestionSafe[]);
+    setQuestions(((qs ?? []) as unknown) as LiveQuestionSafe[]);
     await refetchParticipants();
     await refetchMyAnswers();
   };
