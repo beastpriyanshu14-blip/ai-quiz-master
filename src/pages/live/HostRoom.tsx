@@ -200,9 +200,14 @@ export default function HostRoom() {
               <div className="text-center py-8">
                 <Users className="size-12 mx-auto text-primary mb-4" />
                 <h3 className="text-xl font-display font-bold mb-2">Waiting in lobby</h3>
-                <p className="text-muted-foreground mb-6">
-                  {activePart.length} {activePart.length === 1 ? "participant" : "participants"} joined ·{" "}
+                <p className="text-muted-foreground mb-2">
+                  <span className="text-foreground font-semibold">{activePart.length}</span>
+                  {room.max_participants ? ` / ${room.max_participants}` : ""}{" "}
+                  {activePart.length === 1 ? "participant" : "participants"} joined ·{" "}
                   {questions.length} questions ready
+                </p>
+                <p className="text-xs text-muted-foreground mb-6">
+                  Share the room code & password with players, then start the quiz.
                 </p>
                 <Button
                   onClick={startQuiz}
