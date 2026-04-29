@@ -120,7 +120,11 @@ export default function HostRoom() {
   };
   const endQuiz = async () => {
     await supabase.from("live_rooms").update({ status: "ended" }).eq("id", room.id);
-    toast.success("Quiz ended");
+    toast.success("Quiz ended — click Reveal Results to share with players");
+  };
+  const revealResults = async () => {
+    await supabase.from("live_rooms").update({ status: "ended", reveal_results: true }).eq("id", room.id);
+    toast.success("Results revealed to all players!");
   };
   const kick = async (participantId: string) => {
     await supabase.from("live_participants").update({ is_kicked: true }).eq("id", participantId);
