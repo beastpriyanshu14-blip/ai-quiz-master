@@ -127,45 +127,28 @@ export default function HostCreate() {
     const code = generateRoomCode();
     const hostToken = generateToken();
 
-    const { data: room, error: roomErr } = await supabase
-      .from("live_rooms")
-      .insert({
-        code,
-        password,
-        host_token: hostToken,
-        host_name: user!.name,
-        topic: resolvedTopic,
-        difficulty,
-        seconds_per_question: seconds,
-        total_questions: finalQuestions.length,
-      })
-      .select()
-      .single();
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("create_live_room", {
+      p_code: code,
+      p_password: password,
+      p_host_token: hostToken,
+      p_host_name: user!.name,
+      p_topic: resolvedTopic,
+      p_difficulty: difficulty,
+      p_seconds_per_question: seconds,
+      p_max_participants: maxP,
+      p_questions: finalQuestions as any,
+    });
 
-    if (roomErr || !room) {
-      toast.error("Failed to create room");
+    const result = rpcData as { ok?: boolean; room_id?: string; error?: string } | null;
+    if (rpcErr || !result?.ok || !result.room_id) {
+      toast.error(result?.error || rpcErr?.message || "Failed to create room");
       setLoading(false);
       return;
     }
 
-    const rows = finalQuestions.map((q, i) => ({
-      room_id: room.id,
-      order_index: i,
-      question: q.question,
-      options: q.options,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation || "",
-    }));
-    const { error: qErr } = await supabase.from("live_questions").insert(rows);
-    if (qErr) {
-      toast.error("Failed to save questions");
-      setLoading(false);
-      return;
-    }
-
-    saveHostToken(room.id, hostToken);
+    saveHostToken(result.room_id, hostToken);
     toast.success(`Room created! Code: ${code}`);
-    navigate(`/live/host/${room.id}`);
+    navigate(`/live/host/${result.room_id}`);
   };
 
   return (
