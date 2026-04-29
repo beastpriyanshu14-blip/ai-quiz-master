@@ -77,6 +77,19 @@ export default function HostCreate() {
       toast.error("Set a password (min 4 characters)");
       return;
     }
+    if (num < 1 || num > 200) {
+      toast.error("Number of questions must be between 1 and 200");
+      return;
+    }
+    if (seconds < 5 || seconds > 600) {
+      toast.error("Timer must be between 5 and 600 seconds");
+      return;
+    }
+    const maxP = maxPart.trim() === "" ? null : Number(maxPart);
+    if (maxP !== null && (!Number.isFinite(maxP) || maxP < 1 || maxP > 1000)) {
+      toast.error("Max participants must be 1–1000 (or leave blank for unlimited)");
+      return;
+    }
 
     let finalQuestions: QuizQuestion[] = [];
     let resolvedTopic = topic.trim();
