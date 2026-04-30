@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon } from "lucide-react";
+import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getParticipant } from "@/lib/live";
 import { Button } from "@/components/ui/button";
