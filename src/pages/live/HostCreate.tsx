@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles, Plus, Trash2, Lock, Users, Bot, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Sparkles, Plus, Trash2, Lock, Users, Bot, Pencil, Check, FolderOpen } from "lucide-react";
 import { storage } from "@/lib/storage";
-import { generateRoomCode, generateToken, saveHostToken } from "@/lib/live";
+import { generateRoomCode, generateToken, saveHostToken, getOrCreateHostId } from "@/lib/live";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { UserAvatar } from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Difficulty, QuizQuestion } from "@/types/quiz";
+import type { QuestionSet } from "@/types/live";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const DIFFICULTIES: { id: Difficulty; emoji: string; label: string }[] = [
   { id: "easy", emoji: "🌱", label: "EASY" },
@@ -39,6 +47,31 @@ export default function HostCreate() {
   const [password, setPassword] = useState("");
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQ()]);
   const [loading, setLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [savedSets, setSavedSets] = useState<QuestionSet[]>([]);
+  const [setsLoading, setSetsLoading] = useState(false);
+
+  const openPicker = async () => {
+    setPickerOpen(true);
+    setSetsLoading(true);
+    const { data, error } = await supabase.rpc("list_question_sets" as any, {
+      p_host_id: getOrCreateHostId(),
+    });
+    if (error) toast.error("Couldn't load your sets");
+    setSavedSets(((data ?? []) as unknown) as QuestionSet[]);
+    setSetsLoading(false);
+  };
+
+  const loadSet = (s: QuestionSet) => {
+    if (!s.questions?.length) {
+      toast.error("This set has no questions");
+      return;
+    }
+    setQuestions(s.questions);
+    if (!topic.trim()) setTopic(s.name);
+    setPickerOpen(false);
+    toast.success(`Loaded ${s.questions.length} questions from "${s.name}"`);
+  };
 
   useEffect(() => {
     if (!user) navigate("/");
