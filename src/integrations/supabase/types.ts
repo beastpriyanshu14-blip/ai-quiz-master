@@ -423,16 +423,27 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_room_questions_safe: {
-        Args: { p_room_id: string }
-        Returns: {
-          id: string
-          options: Json
-          order_index: number
-          question: string
-          room_id: string
-        }[]
-      }
+      get_room_questions_safe:
+        | {
+            Args: { p_room_id: string }
+            Returns: {
+              id: string
+              options: Json
+              order_index: number
+              question: string
+              room_id: string
+            }[]
+          }
+        | {
+            Args: { p_participant_token?: string; p_room_id: string }
+            Returns: {
+              id: string
+              options: Json
+              order_index: number
+              question: string
+              room_id: string
+            }[]
+          }
       host_advance_question: {
         Args: { p_host_token: string; p_index: number; p_room_id: string }
         Returns: Json
