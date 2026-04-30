@@ -57,8 +57,14 @@ export function Leaderboard({ participants, currentParticipantId, onKick }: Prop
                   {i === 0 && <Crown className="size-3.5 text-warning" />}
                 </div>
               </div>
-              <div className="font-mono font-bold text-sm tabular-nums">
-                {p.score.toLocaleString()}
+              <div className="flex flex-col items-end shrink-0">
+                <div className="font-mono font-bold text-sm tabular-nums leading-tight">
+                  {p.score.toLocaleString()}
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">pts</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground tabular-nums">
+                  ✓ {p.correct_answers ?? 0} correct
+                </div>
               </div>
               {onKick && !isMe && (
                 <button
