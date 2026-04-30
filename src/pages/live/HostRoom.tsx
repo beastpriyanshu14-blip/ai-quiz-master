@@ -49,15 +49,13 @@ export default function HostRoom() {
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_answers", filter: `room_id=eq.${roomId}` }, () => {
-        void refetchAnswers();
-      })
       .subscribe();
-    // live_rooms is intentionally NOT in the realtime publication (it carries
-    // host_token + password). Poll the room state via the host RPC so the UI
-    // advances after Start/Next/Pause/Resume/End actions instead of freezing.
+    // live_rooms and live_answers are intentionally NOT in the realtime publication
+    // (they carry host_token/password and per-row correctness). Poll via SECURITY
+    // DEFINER RPCs so the UI stays in sync without leaking sensitive fields.
     const poll = setInterval(() => {
       void refetchRoom();
+      void refetchAnswers();
     }, 1000);
     return () => {
       void supabase.removeChannel(ch);
@@ -101,7 +99,11 @@ export default function HostRoom() {
     setParticipants(((data ?? []) as unknown) as LiveParticipant[]);
   };
   const refetchAnswers = async () => {
-    const { data } = await supabase.from("live_answers").select("*").eq("room_id", roomId!);
+    if (!hostToken) return;
+    const { data } = await supabase.rpc("host_get_answers" as any, {
+      p_room_id: roomId,
+      p_host_token: hostToken,
+    });
     setAnswers((data ?? []) as LiveAnswer[]);
   };
 
