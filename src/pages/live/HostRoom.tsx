@@ -56,8 +56,15 @@ export default function HostRoom() {
         void refetchAnswers();
       })
       .subscribe();
+    // live_rooms has host-only RLS — postgres_changes events for it never reach
+    // this client. Poll the room state via the host RPC so the UI advances after
+    // Start/Next/Pause/Resume/End actions instead of freezing on the lobby.
+    const poll = setInterval(() => {
+      void refetchRoom();
+    }, 1000);
     return () => {
       void supabase.removeChannel(ch);
+      clearInterval(poll);
     };
   }, [roomId, hostToken]);
 
