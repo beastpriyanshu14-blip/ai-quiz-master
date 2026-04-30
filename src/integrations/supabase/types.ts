@@ -422,6 +422,48 @@ export type Database = {
         Args: { p_host_id: string; p_id: string }
         Returns: Json
       }
+      get_my_answers: {
+        Args: { p_participant_token: string; p_room_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          participant_id: string
+          points_earned: number
+          question_id: string
+          question_order_index: number
+          room_id: string
+          selected_answer: string | null
+          time_taken_ms: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "live_answers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_revealed_answers: {
+        Args: { p_participant_token: string; p_room_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          participant_id: string
+          points_earned: number
+          question_id: string
+          question_order_index: number
+          room_id: string
+          selected_answer: string | null
+          time_taken_ms: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "live_answers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_room_public: {
         Args: { p_room_id: string }
         Returns: {
@@ -488,6 +530,27 @@ export type Database = {
       host_end: {
         Args: { p_host_token: string; p_room_id: string }
         Returns: Json
+      }
+      host_get_answers: {
+        Args: { p_host_token: string; p_room_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          participant_id: string
+          points_earned: number
+          question_id: string
+          question_order_index: number
+          room_id: string
+          selected_answer: string | null
+          time_taken_ms: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "live_answers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       host_get_questions: {
         Args: { p_host_token: string; p_room_id: string }

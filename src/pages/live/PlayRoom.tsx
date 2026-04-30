@@ -55,12 +55,12 @@ export default function PlayRoom() {
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_answers", filter: `room_id=eq.${roomId}` }, () => {
-        void refetchMyAnswers();
-      })
       .subscribe();
+    // live_answers is no longer broadcast via realtime (it carries per-row
+    // correctness/points). Poll via the SECURITY DEFINER RPC for own answers.
     const poll = setInterval(() => {
       void refetchRoom();
+      void refetchMyAnswers();
     }, 1000);
     return () => {
       void supabase.removeChannel(ch);
@@ -103,17 +103,19 @@ export default function PlayRoom() {
   };
   const refetchMyAnswers = async () => {
     if (!me) return;
-    const { data } = await supabase
-      .from("live_answers")
-      .select("*")
-      .eq("room_id", roomId!)
-      .eq("participant_id", me.participantId);
+    const { data } = await supabase.rpc("get_my_answers" as any, {
+      p_room_id: roomId,
+      p_participant_token: me.token,
+    });
     setMyAnswers((data ?? []) as LiveAnswer[]);
   };
   const loadRevealedData = async () => {
-    // Fetch full questions (now allowed via host having ended; we read via questions+answers join workaround:
-    // since questions have host-only RLS, fetch correctness from live_answers (server already validated).
-    const { data: ans } = await supabase.from("live_answers").select("*").eq("room_id", roomId!);
+    if (!me) return;
+    // After the host reveals, RPC returns all answers in the room for analytics.
+    const { data: ans } = await supabase.rpc("get_revealed_answers" as any, {
+      p_room_id: roomId,
+      p_participant_token: me.token,
+    });
     setAllAnswers((ans ?? []) as LiveAnswer[]);
   };
 
