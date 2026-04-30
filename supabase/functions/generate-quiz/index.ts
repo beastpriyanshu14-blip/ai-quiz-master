@@ -22,6 +22,9 @@ Deno.serve(async (req) => {
     if (!topic || typeof topic !== "string" || !topic.trim()) {
       return json({ error: "Topic cannot be empty" }, 400);
     }
+    if (topic.trim().length > 500) {
+      return json({ error: "Topic must be 500 characters or fewer" }, 400);
+    }
     if (!["easy", "medium", "hard"].includes(difficulty)) {
       return json({ error: "Invalid difficulty" }, 400);
     }
