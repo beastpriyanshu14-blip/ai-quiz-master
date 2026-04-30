@@ -47,9 +47,18 @@ export interface LiveParticipant {
   participant_token: string;
   display_name: string;
   score: number;
+  correct_answers: number;
   is_kicked: boolean;
   joined_at: string;
   last_seen_at: string;
+}
+
+export interface QuestionSet {
+  id: string;
+  name: string;
+  questions: import("@/types/quiz").QuizQuestion[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LiveAnswer {
