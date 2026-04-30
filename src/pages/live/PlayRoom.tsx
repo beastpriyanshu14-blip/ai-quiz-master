@@ -142,12 +142,14 @@ export default function PlayRoom() {
   const myAnswerForCurrent = currentQ
     ? myAnswers.find((a) => a.question_order_index === room.current_question_index)
     : undefined;
-  const locked = !!myAnswerForCurrent || remainingMs <= 0 || room.status !== "active";
+  const confirmed = !!myAnswerForCurrent;
+  // Locked = already confirmed/submitted OR room not active anymore.
+  // Timer expiry no longer locks the UI directly — we auto-submit on expiry.
+  const locked = confirmed || room.status !== "active";
 
-  const submit = async (answer: string) => {
-    if (!currentQ || submittingRef.current || locked) return;
+  const submit = async (answer: string | null) => {
+    if (!currentQ || submittingRef.current || confirmed) return;
     submittingRef.current = true;
-    setSelected(answer);
 
     const { data, error } = await supabase.rpc("submit_live_answer", {
       p_room_id: room.id,
@@ -159,12 +161,30 @@ export default function PlayRoom() {
 
     if (error || !result?.ok) {
       submittingRef.current = false;
-      setSelected(null);
-      toast.error(result?.error || "Couldn't submit — try again");
+      // "already answered" / "time up" are benign races — silently refetch.
+      const benign = result?.error && ["already answered", "time up"].includes(result.error);
+      if (!benign) toast.error(result?.error || "Couldn't submit — try again");
+      await refetchMyAnswers();
       return;
     }
     await refetchMyAnswers();
   };
+
+  const confirmAnswer = () => {
+    if (!selected || confirmed) return;
+    void submit(selected);
+  };
+
+  // Auto-submit on timer expiry (with whatever's selected, or null)
+  const autoSubmittedRef = useRef<number>(-1);
+  useEffect(() => {
+    if (!currentQ || confirmed || room.status !== "active") return;
+    if (remainingMs > 0) return;
+    if (autoSubmittedRef.current === room.current_question_index) return;
+    autoSubmittedRef.current = room.current_question_index;
+    void submit(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingMs, confirmed, room.status, room.current_question_index]);
 
   // ------ Analytics (only after reveal) ------
   const myCorrect = allAnswers.filter((a) => a.participant_id === me.participantId && a.is_correct).length;
