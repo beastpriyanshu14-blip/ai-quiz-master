@@ -444,6 +444,45 @@ export default function HostCreate() {
           </Button>
         </div>
       </motion.div>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Load from Saved Sets</DialogTitle>
+            <DialogDescription>
+              Pick a saved question set to auto-fill your manual questions.
+            </DialogDescription>
+          </DialogHeader>
+          {setsLoading ? (
+            <div className="text-center text-muted-foreground py-8">Loading…</div>
+          ) : savedSets.length === 0 ? (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-sm text-muted-foreground">You don't have any saved sets yet.</p>
+              <Button variant="outline" onClick={() => navigate("/sets")}>
+                <FolderOpen className="size-4 mr-2" /> Manage My Sets
+              </Button>
+            </div>
+          ) : (
+            <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {savedSets.map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => loadSet(s)}
+                    className="w-full text-left rounded-xl border border-border bg-secondary/40 hover:border-primary/50 hover:bg-secondary p-3 transition-all"
+                  >
+                    <div className="font-semibold text-sm truncate">{s.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.questions.length} question{s.questions.length === 1 ? "" : "s"} ·
+                      {" "}{new Date(s.updated_at).toLocaleDateString()}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
