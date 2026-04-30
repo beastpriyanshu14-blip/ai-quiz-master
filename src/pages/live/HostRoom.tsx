@@ -46,9 +46,6 @@ export default function HostRoom() {
     if (!roomId || !hostToken) return;
     const ch = supabase
       .channel(`host-room-${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, () => {
-        void refetchRoom();
-      })
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
@@ -56,9 +53,9 @@ export default function HostRoom() {
         void refetchAnswers();
       })
       .subscribe();
-    // live_rooms has host-only RLS — postgres_changes events for it never reach
-    // this client. Poll the room state via the host RPC so the UI advances after
-    // Start/Next/Pause/Resume/End actions instead of freezing on the lobby.
+    // live_rooms is intentionally NOT in the realtime publication (it carries
+    // host_token + password). Poll the room state via the host RPC so the UI
+    // advances after Start/Next/Pause/Resume/End actions instead of freezing.
     const poll = setInterval(() => {
       void refetchRoom();
     }, 1000);
