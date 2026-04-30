@@ -266,25 +266,34 @@ export default function PlayRoom() {
 
               <div className="grid sm:grid-cols-2 gap-3 mb-4">
                 {currentQ.options.map((opt, i) => {
-                  const isMyPick = (myAnswerForCurrent?.selected_answer ?? selected) === opt;
+                  const submittedPick = myAnswerForCurrent?.selected_answer;
+                  const isSelected = !confirmed && selected === opt;
+                  const isConfirmed = confirmed && submittedPick === opt;
+                  const isHighlighted = isSelected || isConfirmed;
                   return (
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => submit(opt)}
+                      onClick={() => !locked && setSelected(opt)}
                       disabled={locked}
                       className={`rounded-2xl border-2 px-4 py-3.5 text-left flex items-center gap-3 transition-all ${
-                        isMyPick
-                          ? "border-primary bg-primary/15 shadow-glow"
-                          : "border-border bg-secondary/50 hover:border-primary/50 hover:bg-secondary"
-                      } ${locked && !isMyPick ? "opacity-50" : ""}`}
+                        isConfirmed
+                          ? "border-success bg-success/15 shadow-glow"
+                          : isSelected
+                            ? "border-primary bg-primary/15 shadow-glow"
+                            : "border-border bg-secondary/50 hover:border-primary/50 hover:bg-secondary"
+                      } ${locked && !isHighlighted ? "opacity-50" : ""}`}
                     >
                       <span
                         className={`size-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
-                          isMyPick ? "bg-gradient-brand text-primary-foreground" : "bg-background text-muted-foreground"
+                          isConfirmed
+                            ? "bg-success text-success-foreground"
+                            : isSelected
+                              ? "bg-gradient-brand text-primary-foreground"
+                              : "bg-background text-muted-foreground"
                         }`}
                       >
-                        {isMyPick ? <Check className="size-4" /> : String.fromCharCode(65 + i)}
+                        {isConfirmed ? <LockIcon className="size-4" /> : isSelected ? <Check className="size-4" /> : String.fromCharCode(65 + i)}
                       </span>
                       <span className="flex-1 text-sm sm:text-base">{opt}</span>
                     </button>
@@ -292,13 +301,24 @@ export default function PlayRoom() {
                 })}
               </div>
 
-              {myAnswerForCurrent && (
-                <p className="text-xs text-center text-muted-foreground">
+              {!confirmed && room.status === "active" && remainingMs > 0 && (
+                <Button
+                  onClick={confirmAnswer}
+                  disabled={!selected}
+                  className="w-full h-12 bg-gradient-brand hover:opacity-90 shadow-glow disabled:opacity-40"
+                >
+                  <Send className="size-4 mr-2" />
+                  {selected ? "Confirm Answer" : "Select an option"}
+                </Button>
+              )}
+
+              {confirmed && (
+                <p className="text-xs text-center text-muted-foreground mt-2">
                   ✓ Answer locked. Results will be revealed by the host at the end.
                 </p>
               )}
-              {!myAnswerForCurrent && remainingMs <= 0 && (
-                <p className="text-xs text-center text-warning">⏱ Time's up — waiting for next question.</p>
+              {!confirmed && remainingMs <= 0 && (
+                <p className="text-xs text-center text-warning mt-2">⏱ Time's up — submitting your selection…</p>
               )}
             </motion.div>
           </AnimatePresence>
