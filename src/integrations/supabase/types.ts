@@ -91,6 +91,7 @@ export type Database = {
       }
       live_participants: {
         Row: {
+          correct_answers: number
           display_name: string
           id: string
           is_kicked: boolean
@@ -101,6 +102,7 @@ export type Database = {
           score: number
         }
         Insert: {
+          correct_answers?: number
           display_name: string
           id?: string
           is_kicked?: boolean
@@ -111,6 +113,7 @@ export type Database = {
           score?: number
         }
         Update: {
+          correct_answers?: number
           display_name?: string
           id?: string
           is_kicked?: boolean
@@ -242,10 +245,38 @@ export type Database = {
         }
         Relationships: []
       }
+      question_sets: {
+        Row: {
+          created_at: string
+          host_id: string
+          id: string
+          name: string
+          questions: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          host_id: string
+          id?: string
+          name: string
+          questions?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          host_id?: string
+          id?: string
+          name?: string
+          questions?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       live_participants_public: {
         Row: {
+          correct_answers: number | null
           display_name: string | null
           id: string | null
           is_kicked: boolean | null
@@ -255,6 +286,7 @@ export type Database = {
           score: number | null
         }
         Insert: {
+          correct_answers?: number | null
           display_name?: string | null
           id?: string | null
           is_kicked?: boolean | null
@@ -264,6 +296,7 @@ export type Database = {
           score?: number | null
         }
         Update: {
+          correct_answers?: number | null
           display_name?: string | null
           id?: string | null
           is_kicked?: boolean | null
@@ -383,6 +416,10 @@ export type Database = {
           p_seconds_per_question: number
           p_topic: string
         }
+        Returns: Json
+      }
+      delete_question_set: {
+        Args: { p_host_id: string; p_id: string }
         Returns: Json
       }
       get_room_public: {
@@ -520,12 +557,31 @@ export type Database = {
         }
         Returns: Json
       }
+      list_question_sets: {
+        Args: { p_host_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          questions: Json
+          updated_at: string
+        }[]
+      }
       submit_live_answer: {
         Args: {
           p_participant_token: string
           p_question_id: string
           p_room_id: string
           p_selected: string
+        }
+        Returns: Json
+      }
+      upsert_question_set: {
+        Args: {
+          p_host_id: string
+          p_id: string
+          p_name: string
+          p_questions: Json
         }
         Returns: Json
       }

@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles, Plus, Trash2, Lock, Users, Bot, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Sparkles, Plus, Trash2, Lock, Users, Bot, Pencil, Check, FolderOpen } from "lucide-react";
 import { storage } from "@/lib/storage";
-import { generateRoomCode, generateToken, saveHostToken } from "@/lib/live";
+import { generateRoomCode, generateToken, saveHostToken, getOrCreateHostId } from "@/lib/live";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { UserAvatar } from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Difficulty, QuizQuestion } from "@/types/quiz";
+import type { QuestionSet } from "@/types/live";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const DIFFICULTIES: { id: Difficulty; emoji: string; label: string }[] = [
   { id: "easy", emoji: "🌱", label: "EASY" },
@@ -39,6 +47,31 @@ export default function HostCreate() {
   const [password, setPassword] = useState("");
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQ()]);
   const [loading, setLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [savedSets, setSavedSets] = useState<QuestionSet[]>([]);
+  const [setsLoading, setSetsLoading] = useState(false);
+
+  const openPicker = async () => {
+    setPickerOpen(true);
+    setSetsLoading(true);
+    const { data, error } = await supabase.rpc("list_question_sets" as any, {
+      p_host_id: getOrCreateHostId(),
+    });
+    if (error) toast.error("Couldn't load your sets");
+    setSavedSets(((data ?? []) as unknown) as QuestionSet[]);
+    setSetsLoading(false);
+  };
+
+  const loadSet = (s: QuestionSet) => {
+    if (!s.questions?.length) {
+      toast.error("This set has no questions");
+      return;
+    }
+    setQuestions(s.questions);
+    if (!topic.trim()) setTopic(s.name);
+    setPickerOpen(false);
+    toast.success(`Loaded ${s.questions.length} questions from "${s.name}"`);
+  };
 
   useEffect(() => {
     if (!user) navigate("/");
@@ -295,16 +328,21 @@ export default function HostCreate() {
 
           {mode === "manual" && (
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <label className="text-sm font-semibold">Questions ({questions.length})</label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setQuestions((qs) => [...qs, emptyQ()])}
-                >
-                  <Plus className="size-4 mr-1" /> Add
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={openPicker}>
+                    <FolderOpen className="size-4 mr-1" /> Load from Saved Sets
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setQuestions((qs) => [...qs, emptyQ()])}
+                  >
+                    <Plus className="size-4 mr-1" /> Add
+                  </Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {questions.map((q, i) => (
@@ -406,6 +444,45 @@ export default function HostCreate() {
           </Button>
         </div>
       </motion.div>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Load from Saved Sets</DialogTitle>
+            <DialogDescription>
+              Pick a saved question set to auto-fill your manual questions.
+            </DialogDescription>
+          </DialogHeader>
+          {setsLoading ? (
+            <div className="text-center text-muted-foreground py-8">Loading…</div>
+          ) : savedSets.length === 0 ? (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-sm text-muted-foreground">You don't have any saved sets yet.</p>
+              <Button variant="outline" onClick={() => navigate("/sets")}>
+                <FolderOpen className="size-4 mr-2" /> Manage My Sets
+              </Button>
+            </div>
+          ) : (
+            <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {savedSets.map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => loadSet(s)}
+                    className="w-full text-left rounded-xl border border-border bg-secondary/40 hover:border-primary/50 hover:bg-secondary p-3 transition-all"
+                  >
+                    <div className="font-semibold text-sm truncate">{s.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.questions.length} question{s.questions.length === 1 ? "" : "s"} ·
+                      {" "}{new Date(s.updated_at).toLocaleDateString()}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
