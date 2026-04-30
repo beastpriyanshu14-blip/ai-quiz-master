@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Sparkles, BarChart3, Bot, Radio, LogIn } from "lucide-react";
+import { ArrowLeft, Search, Sparkles, BarChart3, Bot, Radio, LogIn, FolderOpen } from "lucide-react";
 import { storage } from "@/lib/storage";
 import { useQuizStore } from "@/store/quizStore";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,10 @@ export default function Setup() {
           <BrandLogo size="md" />
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/sets")}>
+            <FolderOpen className="size-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">My Sets</span>
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => navigate("/stats")}>
             <BarChart3 className="size-4 sm:mr-1.5" />
             <span className="hidden sm:inline">My Stats</span>

@@ -9,6 +9,7 @@ import Quiz from "./pages/Quiz.tsx";
 import Results from "./pages/Results.tsx";
 import Stats from "./pages/Stats.tsx";
 import Profile from "./pages/Profile.tsx";
+import QuestionSets from "./pages/QuestionSets.tsx";
 import "./components/ThemeToggle";
 import HostCreate from "./pages/live/HostCreate.tsx";
 import HostRoom from "./pages/live/HostRoom.tsx";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/results" element={<Results />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/sets" element={<QuestionSets />} />
           <Route path="/live/host" element={<HostCreate />} />
           <Route path="/live/host/:roomId" element={<HostRoom />} />
           <Route path="/live/join" element={<JoinRoom />} />
