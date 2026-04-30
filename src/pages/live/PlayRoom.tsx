@@ -45,14 +45,13 @@ export default function PlayRoom() {
     submittingRef.current = false;
   }, [room?.current_question_index]);
 
-  // Realtime
+  // Realtime (participants/answers). Note: live_rooms has host-only RLS, so
+  // postgres_changes events for room status never reach participants — we poll
+  // the room status via the public RPC as a safety net to prevent freezes.
   useEffect(() => {
     if (!roomId) return;
     const ch = supabase
       .channel(`play-room-${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "live_rooms", filter: `id=eq.${roomId}` }, () => {
-        void refetchRoom();
-      })
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
@@ -60,8 +59,12 @@ export default function PlayRoom() {
         void refetchMyAnswers();
       })
       .subscribe();
+    const poll = setInterval(() => {
+      void refetchRoom();
+    }, 1000);
     return () => {
       void supabase.removeChannel(ch);
+      clearInterval(poll);
     };
   }, [roomId]);
 
