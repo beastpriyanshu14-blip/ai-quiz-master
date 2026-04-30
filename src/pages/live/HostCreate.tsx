@@ -328,16 +328,21 @@ export default function HostCreate() {
 
           {mode === "manual" && (
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <label className="text-sm font-semibold">Questions ({questions.length})</label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setQuestions((qs) => [...qs, emptyQ()])}
-                >
-                  <Plus className="size-4 mr-1" /> Add
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={openPicker}>
+                    <FolderOpen className="size-4 mr-1" /> Load from Saved Sets
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setQuestions((qs) => [...qs, emptyQ()])}
+                  >
+                    <Plus className="size-4 mr-1" /> Add
+                  </Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {questions.map((q, i) => (
