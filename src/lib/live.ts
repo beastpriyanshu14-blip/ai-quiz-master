@@ -2,6 +2,17 @@
 
 const HOST_KEY = "quizmaster_host_tokens"; // { [roomId]: token }
 const PARTICIPANT_KEY = "quizmaster_participant_tokens"; // { [roomId]: { token, name, participantId } }
+const HOST_ID_KEY = "quizmaster_host_id"; // stable per-browser host identity for question sets
+
+/** Stable per-browser host identity used to own saved Question Sets. */
+export function getOrCreateHostId(): string {
+  let id = localStorage.getItem(HOST_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID().replace(/-/g, "");
+    localStorage.setItem(HOST_ID_KEY, id);
+  }
+  return id;
+}
 
 export function generateRoomCode(): string {
   // 6-char uppercase alphanumeric, ambiguous chars removed
