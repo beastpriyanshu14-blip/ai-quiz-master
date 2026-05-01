@@ -242,6 +242,20 @@ export default function PlayRoom() {
           </div>
         )}
 
+        {(room.status === "active" || room.status === "paused") && !currentQ && (
+          <div className="glass-strong rounded-3xl p-8 text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="text-4xl mb-4"
+            >
+              ⏳
+            </motion.div>
+            <h2 className="text-xl font-display font-semibold mb-1">Loading question…</h2>
+            <p className="text-sm text-muted-foreground">Syncing with the host</p>
+          </div>
+        )}
+
         {(room.status === "active" || room.status === "paused") && currentQ && (
           <AnimatePresence mode="wait">
             <motion.div
