@@ -21,6 +21,7 @@ export default function PlayRoom() {
   const [selected, setSelected] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const submittingRef = useRef(false);
+  const autoSubmittedRef = useRef<number>(-1);
 
   const me = roomId ? getParticipant(roomId) : null;
 
@@ -75,14 +76,15 @@ export default function PlayRoom() {
   }, [room?.reveal_results, room?.status]);
 
   const refetchRoom = async () => {
-    const { data, error } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    if (!roomId) return;
+    const { data, error } = await supabase.rpc("get_room_public", { p_room_id: roomId });
     if (error) {
       console.error("get_room_public error:", error);
       return;
     }
     if (!data) return;
     const row = Array.isArray(data) ? data[0] : data;
-    if (row && row.id) setRoom(row as LiveRoom);
+    if (row && typeof row === "object" && "id" in row) setRoom(row as unknown as LiveRoom);
   };
 
   const load = async () => {
@@ -94,7 +96,7 @@ export default function PlayRoom() {
   };
   const refetchQuestions = async () => {
     if (!me || !roomId) return;
-    const { data: qs, error } = await supabase.rpc("get_room_questions_safe" as any, {
+    const { data: qs, error } = await supabase.rpc("get_room_questions_safe", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
@@ -106,24 +108,25 @@ export default function PlayRoom() {
     if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
+    if (!roomId) return;
     const { data } = await supabase
-      .from("live_participants_public" as any)
+      .from("live_participants_public")
       .select("*")
-      .eq("room_id", roomId!);
+      .eq("room_id", roomId);
     setParticipants(((data ?? []) as unknown) as LiveParticipant[]);
   };
   const refetchMyAnswers = async () => {
-    if (!me) return;
-    const { data } = await supabase.rpc("get_my_answers" as any, {
+    if (!me || !roomId) return;
+    const { data } = await supabase.rpc("get_my_answers", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
     setMyAnswers((data ?? []) as LiveAnswer[]);
   };
   const loadRevealedData = async () => {
-    if (!me) return;
+    if (!me || !roomId) return;
     // After the host reveals, RPC returns all answers in the room for analytics.
-    const { data: ans } = await supabase.rpc("get_revealed_answers" as any, {
+    const { data: ans } = await supabase.rpc("get_revealed_answers", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
@@ -142,62 +145,24 @@ export default function PlayRoom() {
     }
   }, [meRecord, navigate]);
 
-  if (!me) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <BrandLogo size="md" />
-          <p className="text-muted-foreground mt-4 text-sm">
-            Session not found.{" "}
-            <button
-              onClick={() => navigate("/live/join")}
-              className="text-primary underline"
-            >
-              Rejoin the room
-            </button>
-          </p>
-        </div>
-      </main>
-    );
-  }
-  if (!room) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <BrandLogo size="md" />
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="text-4xl mx-auto w-fit"
-          >
-            ⏳
-          </motion.div>
-          <p className="text-muted-foreground text-sm animate-pulse">
-            Connecting to room...
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  const currentQ = questions[room.current_question_index];
-  const totalMs = room.seconds_per_question * 1000;
-  const elapsedMs = room.question_started_at && room.status === "active"
+  const currentQ = room ? questions[room.current_question_index] : undefined;
+  const totalMs = (room?.seconds_per_question ?? 30) * 1000;
+  const elapsedMs = room?.question_started_at && room.status === "active"
     ? now - new Date(room.question_started_at).getTime()
     : 0;
   const remainingMs = Math.max(0, totalMs - elapsedMs);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
-  const myAnswerForCurrent = currentQ
+  const myAnswerForCurrent = currentQ && room
     ? myAnswers.find((a) => a.question_order_index === room.current_question_index)
     : undefined;
   const confirmed = !!myAnswerForCurrent;
   // Locked = already confirmed/submitted OR room not active anymore.
   // Timer expiry no longer locks the UI directly — we auto-submit on expiry.
-  const locked = confirmed || room.status !== "active";
+  const locked = confirmed || room?.status !== "active";
 
   const submit = async (answer: string | null) => {
-    if (!currentQ || submittingRef.current || confirmed) return;
+    if (!me || !room || !currentQ || submittingRef.current || confirmed) return;
     submittingRef.current = true;
 
     const { data, error } = await supabase.rpc("submit_live_answer", {
@@ -225,20 +190,58 @@ export default function PlayRoom() {
   };
 
   // Auto-submit on timer expiry (with whatever's selected, or null)
-  const autoSubmittedRef = useRef<number>(-1);
   useEffect(() => {
-    if (!currentQ || confirmed || room.status !== "active") return;
+    if (!room || !currentQ || confirmed || room.status !== "active") return;
     if (remainingMs > 0) return;
     if (autoSubmittedRef.current === room.current_question_index) return;
     autoSubmittedRef.current = room.current_question_index;
     void submit(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remainingMs, confirmed, room.status, room.current_question_index]);
+  }, [remainingMs, confirmed, room?.status, room?.current_question_index]);
 
   // ------ Analytics (only after reveal) ------
-  const myCorrect = allAnswers.filter((a) => a.participant_id === me.participantId && a.is_correct).length;
-  const myTotal = allAnswers.filter((a) => a.participant_id === me.participantId).length;
+  const myCorrect = allAnswers.filter((a) => a.participant_id === me?.participantId && a.is_correct).length;
+  const myTotal = allAnswers.filter((a) => a.participant_id === me?.participantId).length;
   const accuracy = myTotal ? Math.round((myCorrect / myTotal) * 100) : 0;
+
+  if (!me) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <BrandLogo size="md" />
+          <p className="text-muted-foreground mt-4 text-sm">
+            Session not found.{" "}
+            <button
+              onClick={() => navigate("/live/join")}
+              className="text-primary underline"
+            >
+              Rejoin the room
+            </button>
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!room) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <BrandLogo size="md" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="text-4xl mx-auto w-fit"
+          >
+            ⏳
+          </motion.div>
+          <p className="text-muted-foreground text-sm animate-pulse">
+            Connecting to room...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen p-4 sm:p-6">
