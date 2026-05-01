@@ -58,9 +58,13 @@ export default function PlayRoom() {
       .subscribe();
     // live_answers is no longer broadcast via realtime (it carries per-row
     // correctness/points). Poll via the SECURITY DEFINER RPC for own answers.
+    // Also re-fetch questions every cycle as a safety net — if the initial
+    // load() raced before the participant token was valid, questions would be
+    // empty and the screen would render blank once the host starts the quiz.
     const poll = setInterval(() => {
       void refetchRoom();
       void refetchMyAnswers();
+      void refetchQuestions();
     }, 1000);
     return () => {
       void supabase.removeChannel(ch);
@@ -84,15 +88,21 @@ export default function PlayRoom() {
   const load = async () => {
     await refetchRoom();
     if (!me) return;
+    await refetchQuestions();
+    await refetchParticipants();
+    await refetchMyAnswers();
+  };
+  const refetchQuestions = async () => {
+    if (!me) return;
     // Safe questions RPC — gated server-side; pass participant token explicitly
     // because the supabase-js client doesn't forward custom headers to RPC calls.
     const { data: qs } = await supabase.rpc("get_room_questions_safe" as any, {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
-    setQuestions(((qs ?? []) as unknown) as LiveQuestionSafe[]);
-    await refetchParticipants();
-    await refetchMyAnswers();
+    const next = ((qs ?? []) as unknown) as LiveQuestionSafe[];
+    // Only replace if we got data — avoids wiping good state on a transient empty result.
+    if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
     const { data } = await supabase
@@ -229,6 +239,20 @@ export default function PlayRoom() {
               {room.max_participants ? ` / ${room.max_participants}` : ""}
             </div>
             <Leaderboard participants={participants} currentParticipantId={me.participantId} />
+          </div>
+        )}
+
+        {(room.status === "active" || room.status === "paused") && !currentQ && (
+          <div className="glass-strong rounded-3xl p-8 text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="text-4xl mb-4"
+            >
+              ⏳
+            </motion.div>
+            <h2 className="text-xl font-display font-semibold mb-1">Loading question…</h2>
+            <p className="text-sm text-muted-foreground">Syncing with the host</p>
           </div>
         )}
 
