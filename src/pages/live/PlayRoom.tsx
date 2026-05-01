@@ -88,15 +88,21 @@ export default function PlayRoom() {
   const load = async () => {
     await refetchRoom();
     if (!me) return;
+    await refetchQuestions();
+    await refetchParticipants();
+    await refetchMyAnswers();
+  };
+  const refetchQuestions = async () => {
+    if (!me) return;
     // Safe questions RPC — gated server-side; pass participant token explicitly
     // because the supabase-js client doesn't forward custom headers to RPC calls.
     const { data: qs } = await supabase.rpc("get_room_questions_safe" as any, {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
-    setQuestions(((qs ?? []) as unknown) as LiveQuestionSafe[]);
-    await refetchParticipants();
-    await refetchMyAnswers();
+    const next = ((qs ?? []) as unknown) as LiveQuestionSafe[];
+    // Only replace if we got data — avoids wiping good state on a transient empty result.
+    if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
     const { data } = await supabase
