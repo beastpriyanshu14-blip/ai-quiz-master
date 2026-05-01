@@ -464,25 +464,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      get_room_public: {
-        Args: { p_room_id: string }
-        Returns: {
-          code: string
-          created_at: string
-          current_question_index: number
-          difficulty: string
-          host_name: string
-          id: string
-          max_participants: number
-          question_started_at: string
-          reveal_results: boolean
-          seconds_per_question: number
-          status: string
-          topic: string
-          total_questions: number
-          updated_at: string
-        }[]
-      }
+      get_room_public: { Args: { p_room_id: string }; Returns: Json }
       get_room_public_by_code: {
         Args: { p_code: string }
         Returns: {
@@ -502,27 +484,16 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_room_questions_safe:
-        | {
-            Args: { p_room_id: string }
-            Returns: {
-              id: string
-              options: Json
-              order_index: number
-              question: string
-              room_id: string
-            }[]
-          }
-        | {
-            Args: { p_participant_token?: string; p_room_id: string }
-            Returns: {
-              id: string
-              options: Json
-              order_index: number
-              question: string
-              room_id: string
-            }[]
-          }
+      get_room_questions_safe: {
+        Args: { p_participant_token?: string; p_room_id: string }
+        Returns: {
+          id: string
+          options: Json
+          order_index: number
+          question: string
+          room_id: string
+        }[]
+      }
       host_advance_question: {
         Args: { p_host_token: string; p_index: number; p_room_id: string }
         Returns: Json
