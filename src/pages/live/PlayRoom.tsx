@@ -49,18 +49,13 @@ export default function PlayRoom() {
   // postgres_changes events for room status never reach participants — we poll
   // the room status via the public RPC as a safety net to prevent freezes.
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !me) return;
     const ch = supabase
       .channel(`play-room-${roomId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
       .subscribe();
-    // live_answers is no longer broadcast via realtime (it carries per-row
-    // correctness/points). Poll via the SECURITY DEFINER RPC for own answers.
-    // Also re-fetch questions every cycle as a safety net — if the initial
-    // load() raced before the participant token was valid, questions would be
-    // empty and the screen would render blank once the host starts the quiz.
     const poll = setInterval(() => {
       void refetchRoom();
       void refetchMyAnswers();
@@ -70,7 +65,7 @@ export default function PlayRoom() {
       void supabase.removeChannel(ch);
       clearInterval(poll);
     };
-  }, [roomId]);
+  }, [roomId, me]);
 
   // When host reveals, load full questions (with correct_answer) + everyone's answers for analytics
   useEffect(() => {
@@ -80,9 +75,14 @@ export default function PlayRoom() {
   }, [room?.reveal_results, room?.status]);
 
   const refetchRoom = async () => {
-    const { data } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    const { data, error } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    if (error) {
+      console.error("get_room_public error:", error);
+      return;
+    }
+    if (!data) return;
     const row = Array.isArray(data) ? data[0] : data;
-    if (row) setRoom(row as LiveRoom);
+    if (row && row.id) setRoom(row as LiveRoom);
   };
 
   const load = async () => {
@@ -93,15 +93,16 @@ export default function PlayRoom() {
     await refetchMyAnswers();
   };
   const refetchQuestions = async () => {
-    if (!me) return;
-    // Safe questions RPC — gated server-side; pass participant token explicitly
-    // because the supabase-js client doesn't forward custom headers to RPC calls.
-    const { data: qs } = await supabase.rpc("get_room_questions_safe" as any, {
+    if (!me || !roomId) return;
+    const { data: qs, error } = await supabase.rpc("get_room_questions_safe" as any, {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
+    if (error) {
+      console.error("get_room_questions_safe error:", error);
+      return;
+    }
     const next = ((qs ?? []) as unknown) as LiveQuestionSafe[];
-    // Only replace if we got data — avoids wiping good state on a transient empty result.
     if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
@@ -141,7 +142,43 @@ export default function PlayRoom() {
     }
   }, [meRecord, navigate]);
 
-  if (!room || !me) return null;
+  if (!me) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <BrandLogo size="md" />
+          <p className="text-muted-foreground mt-4 text-sm">
+            Session not found.{" "}
+            <button
+              onClick={() => navigate("/live/join")}
+              className="text-primary underline"
+            >
+              Rejoin the room
+            </button>
+          </p>
+        </div>
+      </main>
+    );
+  }
+  if (!room) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <BrandLogo size="md" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="text-4xl mx-auto w-fit"
+          >
+            ⏳
+          </motion.div>
+          <p className="text-muted-foreground text-sm animate-pulse">
+            Connecting to room...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   const currentQ = questions[room.current_question_index];
   const totalMs = room.seconds_per_question * 1000;
