@@ -21,6 +21,7 @@ export default function PlayRoom() {
   const [selected, setSelected] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const submittingRef = useRef(false);
+  const autoSubmittedRef = useRef<number>(-1);
 
   const me = roomId ? getParticipant(roomId) : null;
 
@@ -142,62 +143,24 @@ export default function PlayRoom() {
     }
   }, [meRecord, navigate]);
 
-  if (!me) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <BrandLogo size="md" />
-          <p className="text-muted-foreground mt-4 text-sm">
-            Session not found.{" "}
-            <button
-              onClick={() => navigate("/live/join")}
-              className="text-primary underline"
-            >
-              Rejoin the room
-            </button>
-          </p>
-        </div>
-      </main>
-    );
-  }
-  if (!room) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <BrandLogo size="md" />
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="text-4xl mx-auto w-fit"
-          >
-            ⏳
-          </motion.div>
-          <p className="text-muted-foreground text-sm animate-pulse">
-            Connecting to room...
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  const currentQ = questions[room.current_question_index];
-  const totalMs = room.seconds_per_question * 1000;
-  const elapsedMs = room.question_started_at && room.status === "active"
+  const currentQ = room ? questions[room.current_question_index] : undefined;
+  const totalMs = (room?.seconds_per_question ?? 30) * 1000;
+  const elapsedMs = room?.question_started_at && room.status === "active"
     ? now - new Date(room.question_started_at).getTime()
     : 0;
   const remainingMs = Math.max(0, totalMs - elapsedMs);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
-  const myAnswerForCurrent = currentQ
+  const myAnswerForCurrent = currentQ && room
     ? myAnswers.find((a) => a.question_order_index === room.current_question_index)
     : undefined;
   const confirmed = !!myAnswerForCurrent;
   // Locked = already confirmed/submitted OR room not active anymore.
   // Timer expiry no longer locks the UI directly — we auto-submit on expiry.
-  const locked = confirmed || room.status !== "active";
+  const locked = confirmed || room?.status !== "active";
 
   const submit = async (answer: string | null) => {
-    if (!currentQ || submittingRef.current || confirmed) return;
+    if (!room || !currentQ || submittingRef.current || confirmed) return;
     submittingRef.current = true;
 
     const { data, error } = await supabase.rpc("submit_live_answer", {
@@ -225,15 +188,14 @@ export default function PlayRoom() {
   };
 
   // Auto-submit on timer expiry (with whatever's selected, or null)
-  const autoSubmittedRef = useRef<number>(-1);
   useEffect(() => {
-    if (!currentQ || confirmed || room.status !== "active") return;
+    if (!room || !currentQ || confirmed || room.status !== "active") return;
     if (remainingMs > 0) return;
     if (autoSubmittedRef.current === room.current_question_index) return;
     autoSubmittedRef.current = room.current_question_index;
     void submit(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remainingMs, confirmed, room.status, room.current_question_index]);
+  }, [remainingMs, confirmed, room?.status, room?.current_question_index]);
 
   // ------ Analytics (only after reveal) ------
   const myCorrect = allAnswers.filter((a) => a.participant_id === me.participantId && a.is_correct).length;
