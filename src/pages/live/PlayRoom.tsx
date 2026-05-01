@@ -75,9 +75,14 @@ export default function PlayRoom() {
   }, [room?.reveal_results, room?.status]);
 
   const refetchRoom = async () => {
-    const { data } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    const { data, error } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    if (error) {
+      console.error("get_room_public error:", error);
+      return;
+    }
+    if (!data) return;
     const row = Array.isArray(data) ? data[0] : data;
-    if (row) setRoom(row as LiveRoom);
+    if (row && row.id) setRoom(row as LiveRoom);
   };
 
   const load = async () => {
@@ -88,15 +93,16 @@ export default function PlayRoom() {
     await refetchMyAnswers();
   };
   const refetchQuestions = async () => {
-    if (!me) return;
-    // Safe questions RPC — gated server-side; pass participant token explicitly
-    // because the supabase-js client doesn't forward custom headers to RPC calls.
-    const { data: qs } = await supabase.rpc("get_room_questions_safe" as any, {
+    if (!me || !roomId) return;
+    const { data: qs, error } = await supabase.rpc("get_room_questions_safe" as any, {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
+    if (error) {
+      console.error("get_room_questions_safe error:", error);
+      return;
+    }
     const next = ((qs ?? []) as unknown) as LiveQuestionSafe[];
-    // Only replace if we got data — avoids wiping good state on a transient empty result.
     if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
