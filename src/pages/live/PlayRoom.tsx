@@ -58,9 +58,13 @@ export default function PlayRoom() {
       .subscribe();
     // live_answers is no longer broadcast via realtime (it carries per-row
     // correctness/points). Poll via the SECURITY DEFINER RPC for own answers.
+    // Also re-fetch questions every cycle as a safety net — if the initial
+    // load() raced before the participant token was valid, questions would be
+    // empty and the screen would render blank once the host starts the quiz.
     const poll = setInterval(() => {
       void refetchRoom();
       void refetchMyAnswers();
+      void refetchQuestions();
     }, 1000);
     return () => {
       void supabase.removeChannel(ch);
