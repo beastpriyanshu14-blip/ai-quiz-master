@@ -49,18 +49,13 @@ export default function PlayRoom() {
   // postgres_changes events for room status never reach participants — we poll
   // the room status via the public RPC as a safety net to prevent freezes.
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !me) return;
     const ch = supabase
       .channel(`play-room-${roomId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "live_participants", filter: `room_id=eq.${roomId}` }, () => {
         void refetchParticipants();
       })
       .subscribe();
-    // live_answers is no longer broadcast via realtime (it carries per-row
-    // correctness/points). Poll via the SECURITY DEFINER RPC for own answers.
-    // Also re-fetch questions every cycle as a safety net — if the initial
-    // load() raced before the participant token was valid, questions would be
-    // empty and the screen would render blank once the host starts the quiz.
     const poll = setInterval(() => {
       void refetchRoom();
       void refetchMyAnswers();
@@ -70,7 +65,7 @@ export default function PlayRoom() {
       void supabase.removeChannel(ch);
       clearInterval(poll);
     };
-  }, [roomId]);
+  }, [roomId, me]);
 
   // When host reveals, load full questions (with correct_answer) + everyone's answers for analytics
   useEffect(() => {
