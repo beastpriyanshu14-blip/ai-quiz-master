@@ -160,7 +160,7 @@ export default function PlayRoom() {
   const locked = confirmed || room?.status !== "active";
 
   const submit = async (answer: string | null) => {
-    if (!room || !currentQ || submittingRef.current || confirmed) return;
+    if (!me || !room || !currentQ || submittingRef.current || confirmed) return;
     submittingRef.current = true;
 
     const { data, error } = await supabase.rpc("submit_live_answer", {
@@ -198,9 +198,48 @@ export default function PlayRoom() {
   }, [remainingMs, confirmed, room?.status, room?.current_question_index]);
 
   // ------ Analytics (only after reveal) ------
-  const myCorrect = allAnswers.filter((a) => a.participant_id === me.participantId && a.is_correct).length;
-  const myTotal = allAnswers.filter((a) => a.participant_id === me.participantId).length;
+  const myCorrect = allAnswers.filter((a) => a.participant_id === me?.participantId && a.is_correct).length;
+  const myTotal = allAnswers.filter((a) => a.participant_id === me?.participantId).length;
   const accuracy = myTotal ? Math.round((myCorrect / myTotal) * 100) : 0;
+
+  if (!me) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <BrandLogo size="md" />
+          <p className="text-muted-foreground mt-4 text-sm">
+            Session not found.{" "}
+            <button
+              onClick={() => navigate("/live/join")}
+              className="text-primary underline"
+            >
+              Rejoin the room
+            </button>
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!room) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <BrandLogo size="md" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="text-4xl mx-auto w-fit"
+          >
+            ⏳
+          </motion.div>
+          <p className="text-muted-foreground text-sm animate-pulse">
+            Connecting to room...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen p-4 sm:p-6">
