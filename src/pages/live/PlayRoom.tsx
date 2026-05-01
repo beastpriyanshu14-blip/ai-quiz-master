@@ -142,7 +142,43 @@ export default function PlayRoom() {
     }
   }, [meRecord, navigate]);
 
-  if (!room || !me) return null;
+  if (!me) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <BrandLogo size="md" />
+          <p className="text-muted-foreground mt-4 text-sm">
+            Session not found.{" "}
+            <button
+              onClick={() => navigate("/live/join")}
+              className="text-primary underline"
+            >
+              Rejoin the room
+            </button>
+          </p>
+        </div>
+      </main>
+    );
+  }
+  if (!room) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <BrandLogo size="md" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="text-4xl mx-auto w-fit"
+          >
+            ⏳
+          </motion.div>
+          <p className="text-muted-foreground text-sm animate-pulse">
+            Connecting to room...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   const currentQ = questions[room.current_question_index];
   const totalMs = room.seconds_per_question * 1000;
