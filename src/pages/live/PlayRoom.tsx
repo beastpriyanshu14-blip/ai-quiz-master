@@ -76,14 +76,15 @@ export default function PlayRoom() {
   }, [room?.reveal_results, room?.status]);
 
   const refetchRoom = async () => {
-    const { data, error } = await supabase.rpc("get_room_public" as any, { p_room_id: roomId });
+    if (!roomId) return;
+    const { data, error } = await supabase.rpc("get_room_public", { p_room_id: roomId });
     if (error) {
       console.error("get_room_public error:", error);
       return;
     }
     if (!data) return;
     const row = Array.isArray(data) ? data[0] : data;
-    if (row && row.id) setRoom(row as LiveRoom);
+    if (row && typeof row === "object" && "id" in row) setRoom(row as unknown as LiveRoom);
   };
 
   const load = async () => {
@@ -95,7 +96,7 @@ export default function PlayRoom() {
   };
   const refetchQuestions = async () => {
     if (!me || !roomId) return;
-    const { data: qs, error } = await supabase.rpc("get_room_questions_safe" as any, {
+    const { data: qs, error } = await supabase.rpc("get_room_questions_safe", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
@@ -107,24 +108,25 @@ export default function PlayRoom() {
     if (next.length > 0) setQuestions(next);
   };
   const refetchParticipants = async () => {
+    if (!roomId) return;
     const { data } = await supabase
-      .from("live_participants_public" as any)
+      .from("live_participants_public")
       .select("*")
-      .eq("room_id", roomId!);
+      .eq("room_id", roomId);
     setParticipants(((data ?? []) as unknown) as LiveParticipant[]);
   };
   const refetchMyAnswers = async () => {
-    if (!me) return;
-    const { data } = await supabase.rpc("get_my_answers" as any, {
+    if (!me || !roomId) return;
+    const { data } = await supabase.rpc("get_my_answers", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
     setMyAnswers((data ?? []) as LiveAnswer[]);
   };
   const loadRevealedData = async () => {
-    if (!me) return;
+    if (!me || !roomId) return;
     // After the host reveals, RPC returns all answers in the room for analytics.
-    const { data: ans } = await supabase.rpc("get_revealed_answers" as any, {
+    const { data: ans } = await supabase.rpc("get_revealed_answers", {
       p_room_id: roomId,
       p_participant_token: me.token,
     });
