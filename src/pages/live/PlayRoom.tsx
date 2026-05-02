@@ -23,7 +23,10 @@ export default function PlayRoom() {
   const submittingRef = useRef(false);
   const autoSubmittedRef = useRef<number>(-1);
 
-  const me = roomId ? getParticipant(roomId) : null;
+  // Keep participant identity stable. getParticipant() parses localStorage and
+  // returns a new object each call; if used directly, the polling effect below
+  // is torn down on every timer render before it can fetch host updates.
+  const me = useMemo(() => (roomId ? getParticipant(roomId) : null), [roomId]);
 
   useEffect(() => {
     if (!roomId) return navigate("/setup");
@@ -61,7 +64,7 @@ export default function PlayRoom() {
       void refetchRoom();
       void refetchMyAnswers();
       void refetchQuestions();
-    }, 1000);
+    }, 700);
     return () => {
       void supabase.removeChannel(ch);
       clearInterval(poll);
