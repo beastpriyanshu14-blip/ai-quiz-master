@@ -27,6 +27,8 @@ export default function PlayRoom() {
   const submittingRef = useRef(false);
   const autoSubmittedRef = useRef<number>(-1);
 
+  const [terminated, setTerminated] = useState<string | null>(null);
+
   // Keep participant identity stable. getParticipant() parses localStorage and
   // returns a new object each call; if used directly, the polling effect below
   // is torn down on every timer render before it can fetch host updates.
