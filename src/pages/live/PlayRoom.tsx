@@ -473,6 +473,8 @@ export default function PlayRoom() {
             </div>
           </>
         )}
+      </div>
+
       {terminated && (
         <div className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-md flex items-center justify-center p-4">
           <div className="max-w-md w-full rounded-3xl border-2 border-destructive/50 bg-card p-8 text-center shadow-2xl">
