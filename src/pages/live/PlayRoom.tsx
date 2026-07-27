@@ -213,6 +213,40 @@ export default function PlayRoom() {
   const myTotal = allAnswers.filter((a) => a.participant_id === me?.participantId).length;
   const accuracy = myTotal ? Math.round((myCorrect / myTotal) * 100) : 0;
 
+  // ============ Anti-cheat integration ============
+  const isQuizPhase = room?.status === "active" || room?.status === "paused";
+  const antiCheatEnabled = !!(room && me && isQuizPhase && !terminated && !room.reveal_results);
+
+  const logEvent = useCallback((event: AntiCheatEvent) => {
+    if (!roomId) return;
+    try {
+      const key = EVENT_LOG_KEY(roomId);
+      const log = JSON.parse(localStorage.getItem(key) || "[]");
+      log.push(event);
+      localStorage.setItem(key, JSON.stringify(log.slice(-500)));
+    } catch { /* ignore */ }
+  }, [roomId]);
+
+  const handleTerminate = useCallback((reason: string) => {
+    setTerminated(reason);
+    // Best-effort: submit null for current question so score updates
+    if (room?.status === "active" && !confirmed) void submit(null);
+    toast.error("Quiz ended due to repeated violations");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.status, confirmed]);
+
+  const ac = useAntiCheat({
+    enabled: antiCheatEnabled,
+    roomId: roomId ?? "",
+    participantId: me?.participantId ?? "",
+    questionIndex: room?.current_question_index ?? -1,
+    onTerminate: handleTerminate,
+    onLogEvent: logEvent,
+    onViolation: (type, count) => {
+      toast.warning(`Warning ${count}/3 — ${type.replace(/_/g, " ")}`);
+    },
+  });
+
   if (!me) {
     return (
       <main className="min-h-screen flex items-center justify-center p-4">
