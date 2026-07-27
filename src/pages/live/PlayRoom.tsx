@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon, Send } from "lucide-react";
+import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon, Send, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getParticipant } from "@/lib/live";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Leaderboard } from "@/components/live/Leaderboard";
+import { AntiCheatShield } from "@/components/live/AntiCheatShield";
+import { useAntiCheat, type AntiCheatEvent } from "@/hooks/useAntiCheat";
 import { toast } from "sonner";
 import type { LiveRoom, LiveQuestionSafe, LiveParticipant, LiveAnswer } from "@/types/live";
+
+const EVENT_LOG_KEY = (roomId: string) => `quizmaster_ac_log_${roomId}`;
 
 export default function PlayRoom() {
   const { roomId } = useParams<{ roomId: string }>();
