@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon, Send } from "lucide-react";
+import { Check, Clock, Trophy, ArrowLeft, Lock as LockIcon, Send, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getParticipant } from "@/lib/live";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Leaderboard } from "@/components/live/Leaderboard";
+import { AntiCheatShield } from "@/components/live/AntiCheatShield";
+import { useAntiCheat, type AntiCheatEvent } from "@/hooks/useAntiCheat";
 import { toast } from "sonner";
 import type { LiveRoom, LiveQuestionSafe, LiveParticipant, LiveAnswer } from "@/types/live";
+
+const EVENT_LOG_KEY = (roomId: string) => `quizmaster_ac_log_${roomId}`;
 
 export default function PlayRoom() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -22,6 +26,8 @@ export default function PlayRoom() {
   const [now, setNow] = useState(Date.now());
   const submittingRef = useRef(false);
   const autoSubmittedRef = useRef<number>(-1);
+
+  const [terminated, setTerminated] = useState<string | null>(null);
 
   // Keep participant identity stable. getParticipant() parses localStorage and
   // returns a new object each call; if used directly, the polling effect below
@@ -207,6 +213,40 @@ export default function PlayRoom() {
   const myTotal = allAnswers.filter((a) => a.participant_id === me?.participantId).length;
   const accuracy = myTotal ? Math.round((myCorrect / myTotal) * 100) : 0;
 
+  // ============ Anti-cheat integration ============
+  const isQuizPhase = room?.status === "active" || room?.status === "paused";
+  const antiCheatEnabled = !!(room && me && isQuizPhase && !terminated && !room.reveal_results);
+
+  const logEvent = useCallback((event: AntiCheatEvent) => {
+    if (!roomId) return;
+    try {
+      const key = EVENT_LOG_KEY(roomId);
+      const log = JSON.parse(localStorage.getItem(key) || "[]");
+      log.push(event);
+      localStorage.setItem(key, JSON.stringify(log.slice(-500)));
+    } catch { /* ignore */ }
+  }, [roomId]);
+
+  const handleTerminate = useCallback((reason: string) => {
+    setTerminated(reason);
+    // Best-effort: submit null for current question so score updates
+    if (room?.status === "active" && !confirmed) void submit(null);
+    toast.error("Quiz ended due to repeated violations");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.status, confirmed]);
+
+  const ac = useAntiCheat({
+    enabled: antiCheatEnabled,
+    roomId: roomId ?? "",
+    participantId: me?.participantId ?? "",
+    questionIndex: room?.current_question_index ?? -1,
+    onTerminate: handleTerminate,
+    onLogEvent: logEvent,
+    onViolation: (type, count) => {
+      toast.warning(`Warning ${count}/3 — ${type.replace(/_/g, " ")}`);
+    },
+  });
+
   if (!me) {
     return (
       <main className="min-h-screen flex items-center justify-center p-4">
@@ -343,8 +383,11 @@ export default function PlayRoom() {
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => !locked && setSelected(opt)}
-                      disabled={locked}
+                      onClick={(e) => {
+                        ac.trackClick(e.nativeEvent);
+                        if (!locked && !ac.multiTabBlocked && !terminated) setSelected(opt);
+                      }}
+                      disabled={locked || ac.multiTabBlocked || !!terminated}
                       className={`rounded-2xl border-2 px-4 py-3.5 text-left flex items-center gap-3 transition-all ${
                         isConfirmed
                           ? "border-success bg-success/15 shadow-glow"
@@ -431,6 +474,34 @@ export default function PlayRoom() {
           </>
         )}
       </div>
+
+      {terminated && (
+        <div className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl border-2 border-destructive/50 bg-card p-8 text-center shadow-2xl">
+            <ShieldAlert className="size-16 mx-auto text-destructive mb-4" />
+            <h2 className="text-2xl font-display font-bold mb-2">Quiz Terminated</h2>
+            <p className="text-sm text-muted-foreground mb-4">{terminated}</p>
+            <p className="text-xs text-muted-foreground mb-6">
+              Your final score will be based on answers submitted before termination.
+            </p>
+            <Button onClick={() => navigate("/")} className="w-full">Return home</Button>
+          </div>
+        </div>
+      )}
+
+      {antiCheatEnabled && (
+        <AntiCheatShield
+          violations={ac.violations}
+          maxViolations={ac.maxViolations}
+          offline={ac.offline}
+          paused={ac.paused}
+          multiTabBlocked={ac.multiTabBlocked}
+          showIdlePrompt={ac.showIdlePrompt}
+          lastViolationMsg={ac.lastViolation?.msg}
+          onDismissIdle={ac.dismissIdle}
+          onResumeFullscreen={() => void ac.requestFullscreen()}
+        />
+      )}
     </main>
   );
 }
