@@ -473,7 +473,33 @@ export default function PlayRoom() {
             </div>
           </>
         )}
-      </div>
+      {terminated && (
+        <div className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl border-2 border-destructive/50 bg-card p-8 text-center shadow-2xl">
+            <ShieldAlert className="size-16 mx-auto text-destructive mb-4" />
+            <h2 className="text-2xl font-display font-bold mb-2">Quiz Terminated</h2>
+            <p className="text-sm text-muted-foreground mb-4">{terminated}</p>
+            <p className="text-xs text-muted-foreground mb-6">
+              Your final score will be based on answers submitted before termination.
+            </p>
+            <Button onClick={() => navigate("/")} className="w-full">Return home</Button>
+          </div>
+        </div>
+      )}
+
+      {antiCheatEnabled && (
+        <AntiCheatShield
+          violations={ac.violations}
+          maxViolations={ac.maxViolations}
+          offline={ac.offline}
+          paused={ac.paused}
+          multiTabBlocked={ac.multiTabBlocked}
+          showIdlePrompt={ac.showIdlePrompt}
+          lastViolationMsg={ac.lastViolation?.msg}
+          onDismissIdle={ac.dismissIdle}
+          onResumeFullscreen={() => void ac.requestFullscreen()}
+        />
+      )}
     </main>
   );
 }
