@@ -383,8 +383,11 @@ export default function PlayRoom() {
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => !locked && setSelected(opt)}
-                      disabled={locked}
+                      onClick={(e) => {
+                        ac.trackClick(e.nativeEvent);
+                        if (!locked && !ac.multiTabBlocked && !terminated) setSelected(opt);
+                      }}
+                      disabled={locked || ac.multiTabBlocked || !!terminated}
                       className={`rounded-2xl border-2 px-4 py-3.5 text-left flex items-center gap-3 transition-all ${
                         isConfirmed
                           ? "border-success bg-success/15 shadow-glow"
