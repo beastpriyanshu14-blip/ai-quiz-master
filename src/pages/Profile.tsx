@@ -126,7 +126,7 @@ export default function Profile() {
 
         {/* Creator credit */}
         <p className="text-center text-xs text-muted-foreground/60 pt-4 pb-2 tracking-wide">
-          Created by Priyanshu Gupta
+          Created by Ayush Gupta
         </p>
       </motion.div>
     </main>
